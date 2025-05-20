@@ -1,5 +1,5 @@
 {
-  "name": "cloudflare-agent-starter",
+  "name": "@auth0/cloudflare-agent-starter",
   "version": "1.0.0",
   "description": "",
   "type": "module",
@@ -17,8 +17,11 @@
     "ai",
     "agents"
   ],
-  "author": "",
-  "license": "MIT",
+  "author": {
+    "name": "Auth0 Inc.",
+    "url": "https://auth0.com"
+  },
+  "license": "Apache-2.0",
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
     "@cloudflare/vite-plugin": "1.1.0",
