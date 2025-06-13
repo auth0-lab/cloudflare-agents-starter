@@ -8,6 +8,8 @@ A starter template for building AI-powered chat agents using Cloudflare's Agent 
 
 - 💬 Interactive chat interface with AI
 - 🔐 Auth0 authentication and authorization
+- 📜 Securely get access tokens for Federated Connections using [Auth0 Token Vault](https://auth0.com/docs/secure/tokens/token-vault/configure-token-vault)
+- 🙆‍♂️ Backchannel Authentication for **human-in-the-loop** interactions using [Auth0 CIBA](https://auth0.com/docs/get-started/authentication-and-authorization-flow/client-initiated-backchannel-authentication-flow/user-authentication-with-ciba)
 - 👤 User-specific chat history and management
 - 🛠️ Built-in tool system with human-in-the-loop confirmation
 - 📅 Advanced task scheduling (one-time, delayed, and recurring via cron)
@@ -40,23 +42,16 @@ Note: you can also use the default app.
 1. In your Auth0 dashboard, go to "Applications" and click "Create Application"
 2. Select "Web Application" as the application type
 3. Configure the following settings:
-   - Allowed Callback URLs: `http://localhost:3000/callback` (development) and your production URL
+   - Allowed Callback URLs: `http://localhost:3000/auth/callback` (development) and your production URL
    - Allowed Logout URLs: `http://localhost:3000` (development) and your production URL
 4. Note your Domain, Client ID, and Client Secret for later use
 
 ## Quick Start
 
-1. Clone the repository:
+1. Create a new Cloudflare Workers project using the Auth0 starter template:
 
 ```bash
-git clone https://github.com/auth0-lab/cloudflare-agents-starter.git
-cd cloudflare-agents-starter
-```
-
-2. Install dependencies:
-
-```bash
-npm install
+npx create-cloudflare@latest --template auth0-lab/cloudflare-agents-starter
 ```
 
 3. Set up your environment:
@@ -69,11 +64,11 @@ OPENAI_API_KEY=sk-your-openai-api-key
 
 # Auth0 Configuration
 # trailing slash in ISSUER is important:
-OIDC_ISSUER_URL="https://your-tenant.us.auth0.com/"
-OIDC_CLIENT_ID="your-auth0-client-id"
-OIDC_CLIENT_SECRET="your-auth0-client-secret"
-OIDC_SESSION_ENCRYPTION_KEY="generate-a-random-key-at-least-32-characters-long"
-OIDC_AUDIENCE="https://your-auth0-api-identifier"
+AUTH0_DOMAIN="your-tenant.us.auth0.com/"
+AUTH0_CLIENT_ID="your-auth0-client-id"
+AUTH0_CLIENT_SECRET="your-auth0-client-secret"
+AUTH0_SESSION_ENCRYPTION_KEY="generate-a-random-key-at-least-32-characters-long"
+AUTH0_AUDIENCE="https://your-auth0-api-identifier"
 
 # Application base URL
 BASE_URL=http://localhost:3000
@@ -96,11 +91,12 @@ npm run deploy
 ```
 ├── src/
 │   ├── server.ts                # Main worker with auth configuration
-│   ├── chats.ts                 # Chat management functions
+│   ├── chats.ts                 # Chat management functions using Cloudflare KV
 │   ├── agent/                   # Agent-related code
 │   │   ├── index.ts             # Chat agent implementation with Auth0 integration
 │   │   ├── tools.ts             # Tool definitions and implementations
 │   │   ├── utils.ts             # Agent utility functions
+│   │   ├── auth0-ai.ts          # Auth0 AI initialization and configuration
 │   │   └── shared.ts            # Shared constants and types
 │   ├── client/                  # Frontend client application
 │   │   ├── app.tsx              # Chat UI implementation
@@ -110,6 +106,7 @@ npm run deploy
 │   │   └── styles.css           # UI styling
 │   ├── components/              # UI components
 │   │   ├── auth0/               # Auth0-specific components
+│   │   ├── auth0-ai/            # Auth0-specific components
 │   │   ├── chatList/            # Chat list components
 │   │   └── ...                  # Other UI components
 │   └── hooks/                   # React hooks
@@ -131,10 +128,25 @@ This starter kit uses Auth0 for authentication and authorization:
 
 This project utilizes two key npm packages for authentication:
 
-- [`hono-openid-connect`](https://github.com/honojs/middleware/tree/main/packages/auth-js/openid-connect) - Handles browser-based authentication flows, session management, and token handling for the web interface.
-- [`agents-oauth2-jwt-bearer`](https://github.com/cloudflare/agents/tree/main/packages/agents-oauth2-jwt-bearer) - Secures WebSocket connections and API endpoints for the agent, providing JWT validation and authorization for all agent interactions.
+- [`@auth0/auth0-hono`](https://github.com/auth0-lab/auth0-hono) - Handles browser-based authentication flows, session management, and token handling for the web interface.
+- [`@auth0/auth0-cloudflare-agents-api`](https://github.com/auth0-lab/auth0-cloudflare-agents-api/) - Secures WebSocket connections and API endpoints for the agent, providing token validation and authorization for all agent interactions.
+- [`@auth0/ai`](https://github.com/auth0-lab/auth0-ai-js/) - Provides AI capabilities for the agent. Token Vault for Federated Connections, Backchannel Authorization, and more.
 
 These packages work together to provide a comprehensive authentication solution that secures both the web interface and the underlying agent communication.
+
+## Auth0 AI Powerful Integrations
+
+The example contains two powerful integrations with Auth0 AI:
+
+- **Token Vault**: Securely store and retrieve access tokens for Federated Connections, allowing the agent to access third-party APIs on behalf of the user.
+- **Backchannel Authentication**: Implement human-in-the-loop interactions using Client-Initiated Backchannel Authentication (CIBA) flow, allowing the agent to request user confirmation for actions that require human input.
+
+Prompts:
+
+- `Am I available next monday 9am?` - This messsage will call the [check-user-calendar](src/agent/auth0-ai-sample-tools/check-user-calendar.ts) which is wrapped by the `@auth0/ai` Authorizer. If the application can't access the user's calendar it will fire a popup window with the Authorization process. Once completed, the agent will be able to access the user's calendar and answer the question.
+- `Buy 100 shares of MSFT` - This message will call the [buy-stock](src/agent/auth0-ai-sample-tools/buy-stock.ts) tool which is wrapped by the `@auth0/ai` Backchannel Authorizer. The agent fires an authorization request to the user, who will receive a push notification on their device. The user can then approve or deny the request. If approved, the agent will execute the tool and "buy the stock".
+
+Another interesting scenario is triggering the buy stock tool on a schedule. For example, you can ask the agent to "buy 100 shares in 5 minutes". The agent will schedule the tool execution using the Cloudflare agent Task Scheduler, which supports one-time, delayed, and recurring tasks via cron expressions. Once it executes the task, it will again fire the authorization request to the user, who can approve or deny the request.
 
 ## Customization Guide
 
@@ -188,8 +200,10 @@ The agent uses the `WithAuth` mixin from `agents-oauth2-jwt-bearer` package to s
 
 ## Learn More
 
+- [`@auth0/auth0-hono`](https://github.com/auth0-lab/auth0-hono)
+- [`@auth0/auth0-cloudflare-agents-api`](https://github.com/auth0-lab/auth0-cloudflare-agents-api/)
+- [`@auth0/ai`](https://github.com/auth0-lab/auth0-ai-js/)
 - [`agents`](https://github.com/cloudflare/agents/blob/main/packages/agents/README.md)
-- [`agents-oauth2-jwt-bearer`](https://github.com/cloudflare/agents/tree/main/packages/agents-oauth2-jwt-bearer)
 - [Cloudflare Agents Documentation](https://developers.cloudflare.com/agents/)
 - [Cloudflare Workers Documentation](https://developers.cloudflare.com/workers/)
 - [Auth0 Documentation](https://auth0.com/docs/)

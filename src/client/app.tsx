@@ -1,5 +1,5 @@
 import type { Message } from "@ai-sdk/react";
-import { useAgentChat } from "agents/ai-react";
+import { useAgentChatInterruptions } from "@auth0/ai-cloudflare/react";
 import { useAgent } from "agents/react";
 import { use, useCallback, useEffect, useRef, useState } from "react";
 import type { tools } from "../agent/tools";
@@ -14,7 +14,10 @@ import { Toggle } from "@/components/toggle/Toggle";
 import { ToolInvocationCard } from "@/components/tool-invocation-card/ToolInvocationCard";
 
 // Icon imports
+import { GoogleCalendarIcon } from "@/components/auth0-ai/FederatedConnections/icons";
+import { EnsureAPIAccessPopup } from "@/components/auth0-ai/FederatedConnections/popup";
 import useChatTitle from "@/hooks/useChatTitle";
+import { FederatedConnectionInterrupt } from "@auth0/ai/interrupts";
 import { Bug, PaperPlaneTilt, Robot, Trash } from "@phosphor-icons/react";
 import { useNavigate, useParams } from "react-router";
 import { Tooltip } from "../components/tooltip/Tooltip";
@@ -53,15 +56,11 @@ export default function Chat() {
   useEffect(() => {
     if (!loggedOut) return;
     navigate("/");
-  }, [loggedOut]);
+  }, [loggedOut, navigate]);
 
   const agent = useAgent({
     agent: "chat",
     name: threadID ?? undefined,
-  });
-
-  agent.addEventListener("error", (e) => {
-    console.dir(e);
   });
 
   const {
@@ -71,9 +70,11 @@ export default function Chat() {
     handleSubmit: handleAgentSubmit,
     addToolResult,
     clearHistory,
-  } = useAgentChat({
+    toolInterrupt,
+  } = useAgentChatInterruptions({
     agent,
     maxSteps: 5,
+    id: threadID,
   });
 
   // Scroll to bottom when messages change
@@ -86,9 +87,10 @@ export default function Chat() {
       (part) =>
         part.type === "tool-invocation" &&
         part.toolInvocation.state === "call" &&
-        toolsRequiringConfirmation.includes(
+        (toolsRequiringConfirmation.includes(
           part.toolInvocation.toolName as keyof typeof tools
-        )
+        ) ||
+          FederatedConnectionInterrupt.isInterrupt(toolInterrupt))
     )
   );
 
@@ -224,6 +226,33 @@ export default function Chat() {
                           if (part.type === "tool-invocation") {
                             const toolInvocation = part.toolInvocation;
                             const toolCallId = toolInvocation.toolCallId;
+                            if (
+                              toolInterrupt &&
+                              FederatedConnectionInterrupt.isInterrupt(
+                                toolInterrupt
+                              ) &&
+                              toolInvocation.state === "call"
+                            ) {
+                              return (
+                                <EnsureAPIAccessPopup
+                                  key={toolCallId}
+                                  interrupt={toolInterrupt}
+                                  auth={{ authorizePath: "/auth/login" }}
+                                  connectWidget={{
+                                    icon: (
+                                      <div className="bg-gray-200 p-3 rounded-lg flex-wrap">
+                                        <GoogleCalendarIcon />
+                                      </div>
+                                    ),
+                                    title: "Google Calendar Access",
+                                    description:
+                                      "We need access to your google Calendar in order to call this tool...",
+                                    action: { label: "Grant" },
+                                  }}
+                                />
+                              );
+                            }
+
                             const needsConfirmation =
                               toolsRequiringConfirmation.includes(
                                 toolInvocation.toolName as keyof typeof tools

@@ -3,12 +3,11 @@ import { Button } from "@/components/button/Button";
 
 // Icon imports
 import { FilePlus, Moon, Sun } from "@phosphor-icons/react";
+import React, { useEffect, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router";
-import useUser from "../hooks/useUser";
-import { useEffect, useState, type ReactNode } from "react";
 import UserButton from "../components/auth0/UserButton";
 import { DropdownMenuItem } from "../components/ui/dropdown-menu";
-import React from "react";
+import useUser from "../hooks/useUser";
 import { createNewChat } from "./chats";
 
 // Tipos para las props de los slots
@@ -107,9 +106,10 @@ export function Layout({ children }: { children: ReactNode }) {
             </Button>
 
             {user && (
-              <UserButton user={user} logoutUrl="/logout">
+              <UserButton user={user} logoutUrl="/auth/logout">
                 <DropdownMenuItem>
                   <button
+                    type="button"
                     className="flex gap-2 items-center cursor-pointer"
                     onClick={toggleTheme}
                   >

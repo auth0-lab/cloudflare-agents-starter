@@ -10,5 +10,5 @@ export const createNewChat = async (navigate: NavigateFunction) => {
     return;
   }
   const { id } = (await response.json()) as { id: string };
-  navigate(`/c/${id}`);
+  await navigate(`/c/${id}`);
 };

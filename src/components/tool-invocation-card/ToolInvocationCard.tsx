@@ -1,9 +1,9 @@
-import { useState } from "react";
-import { Robot, CaretDown } from "@phosphor-icons/react";
+import { APPROVAL } from "@/agent/shared";
 import { Button } from "@/components/button/Button";
 import { Card } from "@/components/card/Card";
 import { Tooltip } from "@/components/tooltip/Tooltip";
-import { APPROVAL } from "@/agent/shared";
+import { CaretDown, Robot } from "@phosphor-icons/react";
+import { useState } from "react";
 
 interface ToolInvocation {
   toolName: string;
