@@ -7,17 +7,17 @@ import {
 import { errorSerializer, invokeTools } from "@auth0/ai-vercel/interrupts";
 import { Auth0Interrupt } from "@auth0/ai/interrupts";
 import { AuthAgent, OwnedAgent } from "@auth0/auth0-cloudflare-agents-api";
-import { type Schedule } from "agents";
+import type { Schedule } from "agents";
 import { AIChatAgent } from "agents/ai-chat-agent";
 import { unstable_getSchedulePrompt } from "agents/schedule";
 import {
+  type Message,
+  type StreamTextOnFinishCallback,
+  type ToolSet,
   createDataStreamResponse,
   generateId,
   generateText,
   streamText,
-  type Message,
-  type StreamTextOnFinishCallback,
-  type ToolSet,
 } from "ai";
 import { extend } from "flumix";
 import { executions, tools } from "./tools";

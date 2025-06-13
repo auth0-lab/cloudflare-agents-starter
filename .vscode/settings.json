@@ -8,6 +8,11 @@
     "editor.defaultFormatter": "esbenp.prettier-vscode",
     "files.insertFinalNewline": false
   },
+  "[jsonc]": {
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "files.insertFinalNewline": false
+  },
   "editor.codeActionsOnSave": {
     "source.fixAll": "explicit",
     "source.organizeImports": "explicit"

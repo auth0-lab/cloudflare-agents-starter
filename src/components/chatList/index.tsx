@@ -1,6 +1,6 @@
+import { formatDistanceToNow } from "date-fns";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
-import { formatDistanceToNow } from "date-fns";
 
 type Chat = {
   id: string;
@@ -35,6 +35,7 @@ export default function ChatList() {
             key={chat.id}
             className="border rounded-xl p-4 hover:bg-neutral-100 transition cursor-pointer"
             onClick={() => navigate(`/c/${chat.id}`)}
+            onKeyDown={() => navigate(`/c/${chat.id}`)}
           >
             <h2 className="text-lg font-medium text-neutral-900">
               {chat.title}

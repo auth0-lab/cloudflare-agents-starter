@@ -35,7 +35,7 @@ export const checkUsersCalendar = withGoogleCalendar(
       if (!response.ok) {
         if (response.status === 401) {
           throw new FederatedConnectionError(
-            `Authorization required to access the Federated Connection`
+            "Authorization required to access the Federated Connection"
           );
         }
         throw new Error(

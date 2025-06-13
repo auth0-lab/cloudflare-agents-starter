@@ -52,6 +52,7 @@ export function PromptUserContainer({
       {action && (
         <div className="w-full sm:w-fit">
           <button
+            type="button"
             onClick={() => action.onClick()}
             className={cn(
               "w-full sm:w-fit bg-gray-200 text-black whitespace-nowrap rounded-md text-sm font-normal focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 hover:bg-primary/90 hover:text-white py-2 px-4 transition-all duration-300",

@@ -10,8 +10,8 @@ root.render(
   <Providers>
     <Router>
       <Routes>
-        <Route path="/" element={<Home />}></Route>
-        <Route path="/c/:threadID" element={<App />}></Route>
+        <Route path="/" element={<Home />} />
+        <Route path="/c/:threadID" element={<App />} />
       </Routes>
     </Router>
   </Providers>

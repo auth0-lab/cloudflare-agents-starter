@@ -12,7 +12,6 @@ export function EnsureAPIAccess(props: FederatedConnectionAuthProps) {
       return <EnsureAPIAccessPopup {...props} />;
     case "redirect":
       return <EnsureAPIAccessRedirect {...props} />;
-    case "auto":
     default:
       return (
         <>

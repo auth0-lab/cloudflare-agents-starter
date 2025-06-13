@@ -7,7 +7,10 @@ export function GoogleCalendarIcon() {
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       xmlnsXlink="http://www.w3.org/1999/xlink"
+      aria-label="Google Calendar"
+      aria-labelledby="title-google-calendar"
     >
+      <title id="title-google-calendar">Google Calendar</title>
       <rect width="22" height="22" fill="url(#pattern0_1757_10660)" />
       <defs>
         <pattern

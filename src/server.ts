@@ -1,4 +1,4 @@
-import { auth, requiresAuth, type OIDCVariables } from "@auth0/auth0-hono";
+import { type OIDCVariables, auth, requiresAuth } from "@auth0/auth0-hono";
 import { Hono } from "hono";
 import { agentsMiddleware } from "hono-agents";
 import { logger } from "hono/logger";
@@ -118,7 +118,7 @@ app.use("/agents/*", requiresAuth("error"), async (c, next) => {
   };
   return agentsMiddleware({
     options: {
-      prefix: `agents`,
+      prefix: "agents",
       async onBeforeRequest(req) {
         return addToken(req);
       },

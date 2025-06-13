@@ -56,7 +56,7 @@ export default function Chat() {
   useEffect(() => {
     if (!loggedOut) return;
     navigate("/");
-  }, [loggedOut]);
+  }, [loggedOut, navigate]);
 
   const agent = useAgent({
     agent: "chat",

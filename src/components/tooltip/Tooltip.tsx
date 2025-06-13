@@ -1,5 +1,5 @@
-import { useTooltip } from "@/providers/TooltipProvider";
 import { cn, getHiddenSides } from "@/lib/utils";
+import { useTooltip } from "@/providers/TooltipProvider";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 export type TooltipProps = {

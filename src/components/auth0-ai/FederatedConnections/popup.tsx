@@ -22,7 +22,7 @@ export function EnsureAPIAccessPopup({
       return;
     }
     const interval = setInterval(async () => {
-      if (loginPopup && loginPopup.closed) {
+      if (loginPopup?.closed) {
         setIsLoading(false);
         setLoginPopup(null);
         clearInterval(interval);
@@ -60,11 +60,10 @@ export function EnsureAPIAccessPopup({
     if (!popup) {
       console.error("Popup blocked by the browser");
       return;
-    } else {
-      setLoginPopup(popup);
-      setIsLoading(true);
     }
-  }, [connection, requiredScopes]);
+    setLoginPopup(popup);
+    setIsLoading(true);
+  }, [connection, requiredScopes, authorizePath, returnTo]);
 
   if (isLoading) {
     return <WaitingMessage />;

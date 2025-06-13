@@ -5,7 +5,7 @@ import {
   type AuthorizationPollingInterrupt,
 } from "@auth0/ai/interrupts";
 import { getCurrentAgent } from "agents";
-import { type Chat } from "./chat";
+import type { Chat } from "./chat";
 
 const getAgent = () => {
   const { agent } = getCurrentAgent<Chat>();
@@ -55,5 +55,5 @@ export const withAsyncUserConfirmation = auth0AI.withAsyncUserConfirmation({
     }
     return e.message;
   },
-  bindingMessage: `Please confirm the operation.`,
+  bindingMessage: "Please confirm the operation.",
 });
