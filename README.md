@@ -46,17 +46,10 @@ Note: you can also use the default app.
 
 ## Quick Start
 
-1. Clone the repository:
+1. Create a new Cloudflare Workers project using the Auth0 starter template:
 
 ```bash
-git clone https://github.com/auth0-lab/cloudflare-agents-starter.git
-cd cloudflare-agents-starter
-```
-
-2. Install dependencies:
-
-```bash
-npm install
+npx create-cloudflare@latest --template auth0-lab/cloudflare-agents-starter
 ```
 
 3. Set up your environment:
@@ -69,11 +62,11 @@ OPENAI_API_KEY=sk-your-openai-api-key
 
 # Auth0 Configuration
 # trailing slash in ISSUER is important:
-OIDC_ISSUER_URL="https://your-tenant.us.auth0.com/"
-OIDC_CLIENT_ID="your-auth0-client-id"
-OIDC_CLIENT_SECRET="your-auth0-client-secret"
-OIDC_SESSION_ENCRYPTION_KEY="generate-a-random-key-at-least-32-characters-long"
-OIDC_AUDIENCE="https://your-auth0-api-identifier"
+AUTH0_DOMAIN="your-tenant.us.auth0.com/"
+AUTH0_CLIENT_ID="your-auth0-client-id"
+AUTH0_CLIENT_SECRET="your-auth0-client-secret"
+AUTH0_SESSION_ENCRYPTION_KEY="generate-a-random-key-at-least-32-characters-long"
+AUTH0_AUDIENCE="https://your-auth0-api-identifier"
 
 # Application base URL
 BASE_URL=http://localhost:3000
@@ -131,8 +124,9 @@ This starter kit uses Auth0 for authentication and authorization:
 
 This project utilizes two key npm packages for authentication:
 
-- [`hono-openid-connect`](https://github.com/honojs/middleware/tree/main/packages/auth-js/openid-connect) - Handles browser-based authentication flows, session management, and token handling for the web interface.
-- [`agents-oauth2-jwt-bearer`](https://github.com/cloudflare/agents/tree/main/packages/agents-oauth2-jwt-bearer) - Secures WebSocket connections and API endpoints for the agent, providing JWT validation and authorization for all agent interactions.
+- [`@auth0/auth0-hono`](https://github.com/auth0-lab/auth0-hono) - Handles browser-based authentication flows, session management, and token handling for the web interface.
+- [`@auth0/auth0-cloudflare-agents-api`](https://github.com/auth0-lab/auth0-cloudflare-agents-api/) - Secures WebSocket connections and API endpoints for the agent, providing token validation and authorization for all agent interactions.
+- [`@auth0/ai`](https://github.com/auth0-lab/auth0-ai-js/) - Provides AI capabilities for the agent. Token Vault for Federated Connections, Backchannel Authorization, and more.
 
 These packages work together to provide a comprehensive authentication solution that secures both the web interface and the underlying agent communication.
 
@@ -188,8 +182,10 @@ The agent uses the `WithAuth` mixin from `agents-oauth2-jwt-bearer` package to s
 
 ## Learn More
 
+- [`@auth0/auth0-hono`](https://github.com/auth0-lab/auth0-hono)
+- [`@auth0/auth0-cloudflare-agents-api`](https://github.com/auth0-lab/auth0-cloudflare-agents-api/)
+- [`@auth0/ai`](https://github.com/auth0-lab/auth0-ai-js/)
 - [`agents`](https://github.com/cloudflare/agents/blob/main/packages/agents/README.md)
-- [`agents-oauth2-jwt-bearer`](https://github.com/cloudflare/agents/tree/main/packages/agents-oauth2-jwt-bearer)
 - [Cloudflare Agents Documentation](https://developers.cloudflare.com/agents/)
 - [Cloudflare Workers Documentation](https://developers.cloudflare.com/workers/)
 - [Auth0 Documentation](https://auth0.com/docs/)

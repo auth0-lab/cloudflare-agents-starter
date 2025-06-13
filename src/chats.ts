@@ -1,6 +1,6 @@
+import { generateId } from "ai";
 import type { Context } from "hono";
 import type { HonoEnv } from "./server";
-import { generateId } from "ai";
 
 /**
  * This file contains the logic for creating and listing chats.
@@ -15,7 +15,11 @@ export const createNewChat = async (c: Context<HonoEnv>): Promise<string> => {
   const id = generateId();
   const chatID = c.env.Chat.idFromName(id);
   const stub = c.env.Chat.get(chatID);
-  const userID = c.var.oidc?.claims?.sub as string;
+  const session = await c.var.auth0Client?.getSession(c);
+  const userID = session?.user?.sub;
+  if (!userID) {
+    throw new Error("User not authenticated");
+  }
   await stub.setOwner(userID);
   //insert the chat into the list
   await c.env.ChatList.put(
@@ -38,7 +42,11 @@ type ChatListItemWithTitle = ChatListItem & {
 export const listChats = async (
   c: Context<HonoEnv>
 ): Promise<ChatListItemWithTitle[]> => {
-  const userID = c.var.oidc?.claims?.sub as string;
+  const session = await c.var.auth0Client?.getSession(c);
+  const userID = session?.user?.sub;
+  if (!userID) {
+    throw new Error("User not authenticated");
+  }
   const chats: ChatListItem[] =
     (await c.env.ChatList.get<ChatListItem[]>(userID, "json")) ?? [];
   // sort and take only the last 5 chats

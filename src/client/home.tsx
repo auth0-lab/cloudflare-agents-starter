@@ -2,10 +2,10 @@
 
 // Icon imports
 import ChatList from "@/components/chatList";
+import { useNavigate } from "react-router";
 import useUser from "../hooks/useUser";
 import { Layout } from "./Layout";
 import { createNewChat } from "./chats";
-import { useNavigate } from "react-router";
 
 export default function Home() {
   const { user } = useUser();
@@ -19,7 +19,7 @@ export default function Home() {
           {!user && (
             <p>
               Please log in to use the full features of the app. &nbsp;
-              <a href="/login" className="text-blue-500 hover:underline">
+              <a href="/auth/login" className="text-blue-500 hover:underline">
                 Log in
               </a>
             </p>

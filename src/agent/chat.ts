@@ -1,48 +1,28 @@
-import { type Connection, type Schedule } from "agents";
+import { type Schedule } from "agents";
 import { unstable_getSchedulePrompt } from "agents/schedule";
 
+import { openai } from "@ai-sdk/openai";
+import { WithAuth, WithOwnership } from "@auth0/auth0-cloudflare-agents-api";
 import { AIChatAgent } from "agents/ai-chat-agent";
 import {
   createDataStreamResponse,
   generateId,
   generateText,
   streamText,
+  type Message,
   type StreamTextOnFinishCallback,
   type ToolSet,
-  type Message,
 } from "ai";
-import { openai } from "@ai-sdk/openai";
+import { executions, tools } from "./tools";
 import { processToolCalls } from "./utils";
-import { tools, executions } from "./tools";
-import { WithAuth } from "agents-oauth2-jwt-bearer";
 
 const model = openai("gpt-4o-2024-11-20");
 
 /**
  * Chat Agent implementation that handles real-time AI chat interactions
  */
-export class Chat extends WithAuth(AIChatAgent<Env>) {
-  private async isCurrentUserOwner(): Promise<boolean> {
-    const userInfo = await this.getUserInfo();
-    const agentStorage = this.ctx.storage;
-    const objectOwner = await agentStorage.get("owner");
-    if (objectOwner !== userInfo?.sub) {
-      return false;
-    }
-    return true;
-  }
-
-  async onAuthenticatedConnect(connection: Connection): Promise<void> {
-    if (!(await this.isCurrentUserOwner())) {
-      connection.close(1008, "This chat is not yours.");
-    }
-  }
-
-  async onAuthenticatedRequest(request: Request): Promise<void | Response> {
-    if (!(await this.isCurrentUserOwner())) {
-      return new Response("This chat is not yours.", { status: 403 });
-    }
-
+export class Chat extends WithOwnership(WithAuth(AIChatAgent<Env>, {})) {
+  async onAuthorizedRequest(request: Request): Promise<void | Response> {
     const url = new URL(request.url);
     if (url.pathname.endsWith("title")) {
       const title = await this.getTitle();
@@ -63,7 +43,7 @@ export class Chat extends WithAuth(AIChatAgent<Env>) {
       ...tools,
       ...this.mcp.unstable_getAITools(),
     };
-    const userInfo = (await this.getUserInfo())!;
+    const claims = this.getClaims();
     // Create a streaming response that handles both text and tool outputs
     const dataStreamResponse = createDataStreamResponse({
       execute: async (dataStream) => {
@@ -85,7 +65,7 @@ ${unstable_getSchedulePrompt({ date: new Date() })}
 
 If the user asks to schedule a task, use the schedule tool to schedule the task.
 
-The name of the user is ${userInfo.name ?? "unknown"}.
+The name of the user is ${claims?.name ?? "unknown"}.
 `,
           messages: processedMessages,
           tools: allTools,
@@ -150,12 +130,5 @@ The name of the user is ${userInfo.name ?? "unknown"}.
       return title;
     }
     return "New Chat";
-  }
-
-  async setOwner(owner: string): Promise<void> {
-    if (!owner) {
-      throw new Error("Owner cannot be empty");
-    }
-    await this.ctx.storage.put("owner", owner);
   }
 }

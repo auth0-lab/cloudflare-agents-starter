@@ -1,11 +1,6 @@
+import { auth, requiresAuth, type OIDCVariables } from "@auth0/auth0-hono";
 import { Hono } from "hono";
 import { agentsMiddleware } from "hono-agents";
-import {
-  auth,
-  requiresAuth,
-  type OIDCVariables,
-  type UserInfo,
-} from "hono-openid-connect";
 import { logger } from "hono/logger";
 import { createNewChat, listChats } from "./chats";
 
@@ -13,9 +8,7 @@ export { Chat } from "./agent";
 
 export type HonoEnv = {
   Bindings: Env;
-  Variables: OIDCVariables<{
-    user: UserInfo | null;
-  }>;
+  Variables: OIDCVariables;
 };
 
 const app = new Hono<HonoEnv>();
@@ -30,20 +23,12 @@ app.use(
 );
 
 app.get("/user", async (c): Promise<Response> => {
-  const session = c.get("session");
-  if (!c.get("oidc")?.isAuthenticated) {
-    session?.set("user", null);
+  // const session = c.get("session");
+  const session = await c.var.auth0Client?.getSession(c);
+  if (!session?.user) {
     return c.json({ error: "User not authenticated" }, 401);
   }
-  let userInfo = session?.get("user");
-  if (!userInfo) {
-    userInfo = await c.var.oidc?.fetchUserInfo();
-    if (!userInfo) {
-      return c.json({ error: "User not authenticated" }, 401);
-    }
-    session?.set("user", userInfo);
-  }
-  return c.json(userInfo);
+  return c.json(session.user);
 });
 
 app.get("/check-open-ai-key", async (c) => {
@@ -73,9 +58,9 @@ app.get("/c/:chadID", requiresAuth(), async (c) => {
 });
 
 app.use("/agents/*", requiresAuth("error"), async (c, next) => {
-  const tokenSet = c.var.oidc?.tokens;
+  const tokenSet = await c.var.auth0Client?.getAccessToken(c);
   const addToken = (req: Request) => {
-    const accessToken = tokenSet?.access_token as string;
+    const accessToken = tokenSet?.accessToken;
     req.headers.set("Authorization", `Bearer ${accessToken}`);
     return req;
   };
