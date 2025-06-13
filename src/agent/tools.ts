@@ -7,6 +7,9 @@ import { z } from "zod";
 
 import { getCurrentAgent } from "agents";
 import { unstable_scheduleSchema } from "agents/schedule";
+import { format, toZonedTime } from "date-fns-tz";
+import { buyStock } from "./auth0-ai-sample-tools/buy-stock";
+import { checkUsersCalendar } from "./auth0-ai-sample-tools/check-user-calendar";
 import type { Chat } from "./chat";
 
 /**
@@ -27,10 +30,16 @@ const getWeatherInformation = tool({
  */
 const getLocalTime = tool({
   description: "get the local time for a specified location",
-  parameters: z.object({ location: z.string() }),
-  execute: async ({ location }) => {
-    console.log(`Getting local time for ${location}`);
-    return "10am";
+  parameters: z.object({
+    timeZone: z.string().describe("IANA time zone name"),
+  }),
+  execute: async ({ timeZone: location }) => {
+    const now = new Date();
+    const zonedDate = toZonedTime(now, location);
+    const output = format(zonedDate, "yyyy-MM-dd HH:mm:ssXXX", {
+      timeZone: location,
+    });
+    return output;
   },
 });
 
@@ -119,6 +128,8 @@ export const tools = {
   scheduleTask,
   getScheduledTasks,
   cancelScheduledTask,
+  checkUsersCalendar,
+  buyStock,
 };
 
 /**

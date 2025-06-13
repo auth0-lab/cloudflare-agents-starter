@@ -1,9 +1,9 @@
-import "./styles.css";
-import { createRoot } from "react-dom/client";
-import App from "./app";
 import { Providers } from "@/providers";
-import { BrowserRouter as Router, Routes, Route } from "react-router";
+import { createRoot } from "react-dom/client";
+import { Route, BrowserRouter as Router, Routes } from "react-router";
+import App from "./app";
 import Home from "./home";
+import "./styles.css";
 const root = createRoot(document.getElementById("app")!);
 
 root.render(

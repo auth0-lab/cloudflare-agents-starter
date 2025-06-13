@@ -107,7 +107,7 @@ export function Layout({ children }: { children: ReactNode }) {
             </Button>
 
             {user && (
-              <UserButton user={user} logoutUrl="/logout">
+              <UserButton user={user} logoutUrl="/auth/logout">
                 <DropdownMenuItem>
                   <button
                     className="flex gap-2 items-center cursor-pointer"

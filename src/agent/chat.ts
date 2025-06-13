@@ -1,9 +1,15 @@
-import { type Schedule } from "agents";
-import { unstable_getSchedulePrompt } from "agents/schedule";
-
+import { setChatTitle } from "@/chats";
 import { openai } from "@ai-sdk/openai";
-import { WithAuth, WithOwnership } from "@auth0/auth0-cloudflare-agents-api";
+import {
+  AsyncUserConfirmationResumer,
+  CloudflareKVStore,
+} from "@auth0/ai-cloudflare";
+import { errorSerializer, invokeTools } from "@auth0/ai-vercel/interrupts";
+import { Auth0Interrupt } from "@auth0/ai/interrupts";
+import { AuthAgent, OwnedAgent } from "@auth0/auth0-cloudflare-agents-api";
+import { type Schedule } from "agents";
 import { AIChatAgent } from "agents/ai-chat-agent";
+import { unstable_getSchedulePrompt } from "agents/schedule";
 import {
   createDataStreamResponse,
   generateId,
@@ -13,23 +19,29 @@ import {
   type StreamTextOnFinishCallback,
   type ToolSet,
 } from "ai";
+import { extend } from "flumix";
 import { executions, tools } from "./tools";
 import { processToolCalls } from "./utils";
 
 const model = openai("gpt-4o-2024-11-20");
 
+const SuperAgent = extend(AIChatAgent<Env>)
+  // Authenticate requests and connections using
+  // JSON Web Token (JWT) Profile for OAuth 2.0 Access Tokens.
+  .with(AuthAgent)
+  // Every durable object has an owner set during creation.
+  // Other uses will be rejected.
+  .with(OwnedAgent)
+  // Take advantage of Agent scheduling capabilities
+  // to handle async user confirmation polling.
+  .with(AsyncUserConfirmationResumer)
+  // Builds the agent with all mixins applied.
+  .build();
+
 /**
  * Chat Agent implementation that handles real-time AI chat interactions
  */
-export class Chat extends WithOwnership(WithAuth(AIChatAgent<Env>, {})) {
-  async onAuthorizedRequest(request: Request): Promise<void | Response> {
-    const url = new URL(request.url);
-    if (url.pathname.endsWith("title")) {
-      const title = await this.getTitle();
-      return new Response(title);
-    }
-  }
-
+export class Chat extends SuperAgent {
   /**
    * Handles incoming chat messages and manages the response stream
    * @param onFinish - Callback function executed when streaming completes
@@ -47,6 +59,12 @@ export class Chat extends WithOwnership(WithAuth(AIChatAgent<Env>, {})) {
     // Create a streaming response that handles both text and tool outputs
     const dataStreamResponse = createDataStreamResponse({
       execute: async (dataStream) => {
+        // Invoke Auth0 interrupted tools
+        await invokeTools({
+          messages: this.messages,
+          tools: allTools,
+        });
+
         // Process any pending tool calls from previous messages
         // This handles human-in-the-loop confirmations for tools
         const processedMessages = await processToolCalls({
@@ -78,6 +96,9 @@ The name of the user is ${claims?.name ?? "unknown"}.
             // await this.mcp.closeConnection(mcpConnection.id);
           },
           onError: (error) => {
+            if (!Auth0Interrupt.isInterrupt(error)) {
+              return;
+            }
             console.error("Error while streaming:", error);
           },
           maxSteps: 10,
@@ -86,6 +107,7 @@ The name of the user is ${claims?.name ?? "unknown"}.
         // Merge the AI response stream with tool execution outputs
         result.mergeIntoDataStream(dataStream);
       },
+      onError: errorSerializer(),
     });
 
     return dataStreamResponse;
@@ -122,13 +144,16 @@ The name of the user is ${claims?.name ?? "unknown"}.
       `,
     });
     await this.ctx.storage.put("title", title);
+
+    await setChatTitle({
+      userID: (await this.getOwner())!,
+      chatID: this.name,
+      title,
+      env: this.env,
+    });
   }
 
-  async getTitle(): Promise<string> {
-    const title = await this.ctx.storage.get<string>("title");
-    if (title) {
-      return title;
-    }
-    return "New Chat";
+  get auth0AIStore() {
+    return new CloudflareKVStore({ kv: this.env.Session });
   }
 }
