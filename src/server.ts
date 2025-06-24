@@ -2,7 +2,7 @@ import { type OIDCVariables, auth, requiresAuth } from "@auth0/auth0-hono";
 import { Hono } from "hono";
 import { agentsMiddleware } from "hono-agents";
 import { logger } from "hono/logger";
-import { createNewChat, listChats } from "./chats";
+import { createNewChat, getChat, listChats } from "./chats";
 
 export { Chat } from "./agent";
 
@@ -82,6 +82,19 @@ app.get("/api/chats", requiresAuth(), async (c) => {
     env: c.env,
   });
   return c.json(chats);
+});
+
+app.get("/api/chats/:chatID", requiresAuth(), async (c) => {
+  const session = await c.var.auth0Client?.getSession(c);
+  if (!session?.user) {
+    return c.json({ error: "User not authenticated" }, 401);
+  }
+  const chat = await getChat({
+    userID: session.user.sub,
+    chatID: c.req.param("chatID"),
+    env: c.env,
+  });
+  return c.json(chat);
 });
 
 app.get("/c/new", requiresAuth(), async (c) => {
