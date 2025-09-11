@@ -116,27 +116,33 @@ app.get("/c/:chadID", requiresAuth(), async (c) => {
 
 app.use("/agents/*", requiresAuth("error"), async (c, next) => {
   const session = await c.var.auth0Client?.getSession(c);
-  const tokenSet = await c.var.auth0Client?.getAccessToken(c);
-  const addToken = (req: Request) => {
-    const accessToken = tokenSet?.accessToken;
+
+  const addToken = (req: Request, accessToken?: string) => {
     if (accessToken) {
       req.headers.set("Authorization", `Bearer ${accessToken}`);
     }
-    //NOTE: this is only needed for Federated Connection Token Vault
-    // the tool that answer "am I available next monday 9am?"
-    if (session?.refreshToken) {
-      req.headers.set("x-refresh-token", session?.refreshToken);
+
+    // Add user ID for Auth0 AI
+    if (session?.user?.sub) {
+      req.headers.set("x-user-id", session.user.sub);
     }
     return req;
   };
   return agentsMiddleware({
     options: {
-      prefix: "agents",
       async onBeforeRequest(req) {
-        return addToken(req);
+        // Fetch the latest token at request time so a recent authorize can be used
+        const tokenSet = await c.var.auth0Client?.getAccessToken(c);
+        const accessToken = tokenSet?.accessToken;
+        // attaching Authorization header
+        return addToken(req, accessToken);
       },
       async onBeforeConnect(req, lobby) {
-        return addToken(req);
+        // Fetch the latest token at connect time so reconnects after auth include fresh tokens
+        const tokenSet = await c.var.auth0Client?.getAccessToken(c);
+        const accessToken = tokenSet?.accessToken;
+        // attaching Authorization header
+        return addToken(req, accessToken);
       },
     },
     // @ts-ignore

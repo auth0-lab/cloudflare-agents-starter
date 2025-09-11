@@ -1,8 +1,10 @@
-import type { Message } from "@ai-sdk/react";
-import { useAgentChatInterruptions } from "@auth0/ai-cloudflare/react";
+import type { UIMessage } from "@ai-sdk/react";
+
 import { useAgent } from "agents/react";
 import { use, useCallback, useEffect, useRef, useState } from "react";
 import type { tools } from "../agent/tools";
+
+import { useAgentChatInterruptions } from "@auth0/ai-cloudflare/react";
 
 // Component imports
 import { Avatar } from "@/components/avatar/Avatar";
@@ -65,32 +67,78 @@ export default function Chat() {
 
   const {
     messages: agentMessages,
-    input: agentInput,
-    handleInputChange: handleAgentInputChange,
-    handleSubmit: handleAgentSubmit,
     addToolResult,
     clearHistory,
     toolInterrupt,
+    sendMessage,
   } = useAgentChatInterruptions({
     agent,
-    maxSteps: 5,
     id: threadID,
   });
+
+  // Create our own input state since the hook doesn't provide input management
+  const [inputValue, setInputValue] = useState("");
+
+  // Create our own input change handler
+  const handleAgentInputChange = (
+    e: React.ChangeEvent<HTMLTextAreaElement>
+  ) => {
+    setInputValue(e.target.value);
+  };
+
+  // Create our own submit handler
+  const handleAgentSubmit = async (e: React.FormEvent, options?: any) => {
+    e.preventDefault();
+    if (!inputValue?.trim()) return;
+
+    // Create the message object that sendMessage expects
+    const messageToSend = {
+      role: "user" as const,
+      parts: [
+        {
+          type: "text" as const,
+          text: inputValue,
+        },
+      ],
+    };
+
+    // Send message using the hook's sendMessage function
+    try {
+      await sendMessage(messageToSend);
+      setInputValue("");
+    } catch (error) {
+      console.error("Error sending message to agent:", error);
+    }
+  };
+
+  // Create a wrapper for addToolResult to match the expected signature
+  const handleAddToolResult = (args: {
+    toolName: string;
+    toolCallId: string;
+    result: string;
+  }) => {
+    try {
+      addToolResult({
+        tool: args.toolName,
+        toolCallId: args.toolCallId,
+        output: args.result,
+      });
+    } catch (error) {
+      console.error("Error calling addToolResult:", error);
+    }
+  };
 
   // Scroll to bottom when messages change
   useEffect(() => {
     agentMessages.length > 0 && scrollToBottom();
   }, [agentMessages, scrollToBottom]);
 
-  const pendingToolCallConfirmation = agentMessages.some((m: Message) =>
+  const pendingToolCallConfirmation = agentMessages.some((m: UIMessage) =>
     m.parts?.some(
-      (part) =>
-        part.type === "tool-invocation" &&
-        part.toolInvocation.state === "call" &&
-        (toolsRequiringConfirmation.includes(
-          part.toolInvocation.toolName as keyof typeof tools
-        ) ||
-          FederatedConnectionInterrupt.isInterrupt(toolInterrupt))
+      (part: any) =>
+        part.type?.startsWith("tool-") &&
+        part.state === "input-available" &&
+        toolsRequiringConfirmation.includes(part.toolName as keyof typeof tools)
     )
   );
 
@@ -151,7 +199,7 @@ export default function Chat() {
             </div>
           )}
 
-          {agentMessages.map((m: Message, index) => {
+          {agentMessages.map((m: UIMessage, index) => {
             const isUser = m.role === "user";
             const showAvatar =
               index === 0 || agentMessages[index - 1]?.role !== m.role;
@@ -179,7 +227,7 @@ export default function Chat() {
 
                     <div>
                       <div>
-                        {m.parts?.map((part, i) => {
+                        {m.parts?.map((part: any, i: number) => {
                           if (part.type === "text") {
                             return (
                               // biome-ignore lint/suspicious/noArrayIndexKey: immutable index
@@ -216,22 +264,28 @@ export default function Chat() {
                                   }`}
                                 >
                                   {formatTime(
-                                    new Date(m.createdAt as unknown as string)
+                                    new Date(Number(m.id) || Date.now())
                                   )}
                                 </p>
                               </div>
                             );
                           }
 
-                          if (part.type === "tool-invocation") {
-                            const toolInvocation = part.toolInvocation;
-                            const toolCallId = toolInvocation.toolCallId;
+                          if (part.type?.startsWith("tool-")) {
+                            const toolCallId = part.toolCallId;
+                            const toolName = part.toolName;
+                            // Prevent duplicate rendering for the same toolCallId
+                            // within a single assistant message.
+                            const seenToolCallIds = new Set<string>();
+                            if (seenToolCallIds.has(toolCallId)) return null;
+                            seenToolCallIds.add(toolCallId);
+
+                            // Check for federated connection interrupts (render popup on call or when input is available)
                             if (
                               toolInterrupt &&
                               FederatedConnectionInterrupt.isInterrupt(
                                 toolInterrupt
-                              ) &&
-                              toolInvocation.state === "call"
+                              )
                             ) {
                               return (
                                 <EnsureAPIAccessPopup
@@ -255,11 +309,20 @@ export default function Chat() {
 
                             const needsConfirmation =
                               toolsRequiringConfirmation.includes(
-                                toolInvocation.toolName as keyof typeof tools
+                                toolName as keyof typeof tools
                               );
 
                             // Skip rendering the card in debug mode
                             if (showDebug) return null;
+
+                            const toolInvocation = {
+                              toolName: toolName,
+                              toolCallId: toolCallId,
+                              state: part.state,
+                              args: part.input || {},
+                              output: part.output,
+                              input: part.input,
+                            };
 
                             return (
                               <ToolInvocationCard
@@ -268,7 +331,7 @@ export default function Chat() {
                                 toolInvocation={toolInvocation}
                                 toolCallId={toolCallId}
                                 needsConfirmation={needsConfirmation}
-                                addToolResult={addToolResult}
+                                addToolResult={handleAddToolResult}
                               />
                             );
                           }
@@ -308,7 +371,7 @@ export default function Chat() {
                     : "Send a message..."
                 }
                 className="flex w-full border border-neutral-200 dark:border-neutral-700 px-3 py-2 ring-offset-background placeholder:text-neutral-500 dark:placeholder:text-neutral-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-300 dark:focus-visible:ring-neutral-700 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-neutral-900 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm min-h-[24px] max-h-[calc(75dvh)] overflow-hidden resize-none rounded-2xl !text-base pb-10 dark:bg-neutral-900"
-                value={agentInput}
+                value={inputValue}
                 onChange={(e) => {
                   handleAgentInputChange(e);
                   // Auto-resize the textarea
@@ -334,7 +397,7 @@ export default function Chat() {
                 <button
                   type="submit"
                   className="inline-flex items-center cursor-pointer justify-center gap-2 whitespace-nowrap text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 rounded-full p-1.5 h-fit border border-neutral-200 dark:border-neutral-800"
-                  disabled={pendingToolCallConfirmation || !agentInput.trim()}
+                  disabled={pendingToolCallConfirmation || !inputValue?.trim()}
                 >
                   <PaperPlaneTilt size={16} />
                 </button>

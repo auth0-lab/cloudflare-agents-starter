@@ -27,9 +27,17 @@ export function EnsureAPIAccessPopup({
         setLoginPopup(null);
         clearInterval(interval);
         if (typeof onFinish === "function") {
-          onFinish();
+          try {
+            onFinish();
+          } catch (err) {
+            console.error("EnsureAPIAccessPopup: onFinish threw:", err);
+          }
         } else if (typeof resume === "function") {
-          resume();
+          try {
+            resume();
+          } catch (err) {
+            console.error("EnsureAPIAccessPopup: resume() threw:", err);
+          }
         }
       }
     }, 1000);

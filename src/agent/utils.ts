@@ -1,14 +1,18 @@
 // via https://github.com/vercel/ai/blob/main/examples/next-openai/app/api/use-chat-human-in-the-loop/utils.ts
 
-import { type Message, formatDataStreamPart } from "@ai-sdk/ui-utils";
-import {
-  type DataStreamWriter,
-  type ToolExecutionOptions,
-  type ToolSet,
-  convertToCoreMessages,
+import type {
+  CoreMessage,
+  ToolSet,
+  UIMessage,
+  UIMessageStreamWriter,
 } from "ai";
-import type { z } from "zod";
+import { convertToModelMessages, isToolUIPart } from "ai";
 import { APPROVAL } from "./shared";
+
+interface ToolContext {
+  messages: CoreMessage[];
+  toolCallId: string;
+}
 
 function isValidToolName<K extends PropertyKey, T extends object>(
   key: K,
@@ -19,111 +23,172 @@ function isValidToolName<K extends PropertyKey, T extends object>(
 
 /**
  * Processes tool invocations where human input is required, executing tools when authorized.
- *
- * @param options - The function options
- * @param options.tools - Map of tool names to Tool instances that may expose execute functions
- * @param options.dataStream - Data stream for sending results back to the client
- * @param options.messages - Array of messages to process
- * @param executionFunctions - Map of tool names to execute functions
- * @returns Promise resolving to the processed messages
  */
-export async function processToolCalls<
-  Tools extends ToolSet,
-  ExecutableTools extends {
-    // biome-ignore lint/complexity/noBannedTypes: it's fine
-    [Tool in keyof Tools as Tools[Tool] extends { execute: Function }
-      ? never
-      : Tool]: Tools[Tool];
-  },
->({
+export async function processToolCalls<Tools extends ToolSet>({
   dataStream,
   messages,
   executions,
 }: {
   tools: Tools; // used for type inference
-  dataStream: DataStreamWriter;
-  messages: Message[];
-  executions: {
-    [K in keyof Tools & keyof ExecutableTools]?: (
-      args: z.infer<ExecutableTools[K]["parameters"]>,
-      context: ToolExecutionOptions
-    ) => Promise<unknown>;
-  };
-}): Promise<Message[]> {
-  const lastMessage = messages[messages.length - 1];
-  const parts = lastMessage.parts;
-  if (!parts) return messages;
+  dataStream: UIMessageStreamWriter;
+  messages: UIMessage[];
+  executions: Record<
+    string,
+    // biome-ignore lint/suspicious/noExplicitAny: needs a better type
+    (args: any, context: ToolContext) => Promise<unknown>
+  >;
+}): Promise<UIMessage[]> {
+  // removed verbose debug logs
 
-  const processedParts = await Promise.all(
-    parts.map(async (part) => {
-      // Only process tool invocations parts
-      if (part.type !== "tool-invocation") return part;
+  // Process all messages, not just the last one
+  const processedMessages = await Promise.all(
+    messages.map(async (message) => {
+      // debug logs removed
+      const parts = message.parts;
+      if (!parts) return message;
 
-      const { toolInvocation } = part;
-      const toolName = toolInvocation.toolName;
+      const processedParts = await Promise.all(
+        parts.map(async (part) => {
+          // Only process tool UI parts
+          if (!isToolUIPart(part)) return part;
 
-      // Only continue if we have an execute function for the tool (meaning it requires confirmation) and it's in a 'result' state
-      if (!(toolName in executions) || toolInvocation.state !== "result")
-        return part;
+          // Cast to any to avoid TS narrowing issues from the SDK types
+          const p: any = part as any;
 
-      let result: unknown;
+          const toolName = p.type.replace(
+            "tool-",
+            ""
+          ) as keyof typeof executions;
 
-      if (toolInvocation.result === APPROVAL.YES) {
-        // Get the tool and check if the tool has an execute function.
-        if (
-          !isValidToolName(toolName, executions) ||
-          toolInvocation.state !== "result"
-        ) {
-          return part;
-        }
+          // Check if this is a continueInterruption case
+          const isContinueInterruption =
+            part.state === "output-available" &&
+            part.output &&
+            typeof part.output === "object" &&
+            "continueInterruption" in part.output &&
+            part.output.continueInterruption === true;
 
-        const toolInstance = executions[toolName];
-        if (toolInstance) {
-          result = await toolInstance(toolInvocation.args, {
-            messages: convertToCoreMessages(messages),
-            toolCallId: toolInvocation.toolCallId,
+          // If this is a continueInterruption, convert it into an input-available part
+          // and clear any errorText/output so the agent / model will attempt the tool call
+          // again after the resume flow. Leaving errorText or output with
+          // continueInterruption prevents the SDK from re-invoking the tool.
+          if (isContinueInterruption) {
+            // Convert to a fresh input-available part so the SDK will invoke the tool.execute path.
+            return {
+              ...(p as any),
+              state: "input-available" as const,
+              output: undefined,
+              errorText: undefined,
+              callProviderMetadata: undefined,
+              providerExecuted: undefined,
+            };
+          }
+
+          // Only process tools that require confirmation (are in executions object).
+          // Allow execution when in 'input-available' state or when the part
+          // has been approved by the user (output === APPROVAL.YES) and is
+          // in 'output-available' (UI added approval as output).
+          const approved = p.output === APPROVAL.YES;
+          if (
+            !(toolName in executions) ||
+            isContinueInterruption ||
+            !(
+              p.state === "input-available" ||
+              (p.state === "output-available" && approved)
+            )
+          )
+            return p;
+
+          // removed debug logs
+
+          let result: unknown;
+
+          // Approval is provided via part.output (client adds output when user approves).
+          if (p.output === APPROVAL.YES) {
+            // User approved the tool execution
+            // executing approved tool
+            if (!isValidToolName(toolName, executions)) {
+              return part;
+            }
+
+            const toolInstance = executions[toolName];
+            if (toolInstance) {
+              // Execute the tool using the original input (part.input)
+              // which contains the tool args; approval is in part.output.
+              result = await toolInstance(p.input, {
+                messages: convertToModelMessages(messages),
+                toolCallId: p.toolCallId,
+              });
+              // tool execution result
+            } else {
+              result = "Error: No execute function found on tool";
+            }
+          } else if (p.output === APPROVAL.NO) {
+            // tool denied by user
+            result = "Error: User denied access to tool execution";
+          } else {
+            // no approval decision yet
+            // If no approval input yet, leave the part as-is for user interaction
+            return p;
+          }
+
+          // Forward updated tool result to the client.
+          dataStream.write({
+            type: "data-tool-result",
+            data: {
+              toolCallId: p.toolCallId,
+              result: result,
+            },
           });
-        } else {
-          result = "Error: No execute function found on tool";
-        }
-      } else if (toolInvocation.result === APPROVAL.NO) {
-        result = "Error: User denied access to tool execution";
-      } else {
-        // For any unhandled responses, return the original part.
-        return part;
-      }
 
-      // Forward updated tool result to the client.
-      dataStream.write(
-        formatDataStreamPart("tool_result", {
-          toolCallId: toolInvocation.toolCallId,
-          result,
+          // Return updated tool part with the actual result.
+          return {
+            ...(p as any),
+            state: "output-available" as const,
+            output: result,
+          };
         })
       );
 
-      // Return updated toolInvocation with the actual result.
-      return {
-        ...part,
-        toolInvocation: {
-          ...toolInvocation,
-          result,
-        },
-      };
+      return { ...message, parts: processedParts };
     })
   );
 
-  // Finally return the processed messages
-  return [...messages.slice(0, -1), { ...lastMessage, parts: processedParts }];
+  return processedMessages;
 }
 
-// export function getToolsRequiringConfirmation<
-//   T extends ToolSet
-//   // E extends {
-//   //   [K in keyof T as T[K] extends { execute: Function } ? never : K]: T[K];
-//   // },
-// >(tools: T): string[] {
-//   return (Object.keys(tools) as (keyof T)[]).filter((key) => {
-//     const maybeTool = tools[key];
-//     return typeof maybeTool.execute !== "function";
-//   }) as string[];
-// }
+/**
+ * Clean up incomplete tool calls from messages before sending to API
+ * Prevents API errors from interrupted or failed tool executions
+ */
+export function cleanupMessages(messages: UIMessage[]): UIMessage[] {
+  return messages.filter((message) => {
+    if (!message.parts) return true;
+
+    // Filter out messages with incomplete tool calls
+    const hasIncompleteToolCall = message.parts.some((part) => {
+      if (!isToolUIPart(part)) return false;
+
+      // Treat continueInterruption from provider as an incomplete call that
+      // must be removed before sending to the model so it will re-request
+      // the tool (and allow the SDK to invoke tool.execute).
+      if (
+        part.state === "output-available" &&
+        part.output &&
+        typeof part.output === "object" &&
+        "continueInterruption" in part.output &&
+        part.output.continueInterruption === true
+      ) {
+        return true;
+      }
+
+      // Remove tool calls that are still streaming or awaiting input without results
+      return (
+        part.state === "input-streaming" ||
+        (part.state === "input-available" && !part.output && !part.errorText)
+      );
+    });
+
+    return !hasIncompleteToolCall;
+  });
+}

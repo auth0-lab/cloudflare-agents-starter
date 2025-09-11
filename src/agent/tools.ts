@@ -3,7 +3,7 @@
  * Tools can either require human confirmation or execute automatically
  */
 import { tool } from "ai";
-import { z } from "zod";
+import { z } from "zod/v3";
 
 import { getCurrentAgent } from "agents";
 import { unstable_scheduleSchema } from "agents/schedule";
@@ -14,13 +14,13 @@ import type { Chat } from "./chat";
 
 /**
  * Weather information tool that requires human confirmation
- * When invoked, this will present a confirmation dialog to the user
- * The actual implementation is in the executions object below
+ * This tool does NOT have an execute function, so it will pause in "input-available" state
+ * waiting for user approval via the UI. The actual execution is in the executions object.
  */
 const getWeatherInformation = tool({
   description: "show the weather in a given city to the user",
-  parameters: z.object({ city: z.string() }),
-  // Omitting execute function makes this tool require human confirmation
+  inputSchema: z.object({ city: z.string() }),
+  // No execute function - this will make the tool pause for confirmation
 });
 
 /**
@@ -30,7 +30,7 @@ const getWeatherInformation = tool({
  */
 const getLocalTime = tool({
   description: "get the local time for a specified location",
-  parameters: z.object({
+  inputSchema: z.object({
     timeZone: z.string().describe("IANA time zone name"),
   }),
   execute: async ({ timeZone: location }) => {
@@ -45,7 +45,7 @@ const getLocalTime = tool({
 
 const scheduleTask = tool({
   description: "A tool to schedule a task to be executed at a later time",
-  parameters: unstable_scheduleSchema,
+  inputSchema: unstable_scheduleSchema,
   execute: async ({ when, description }) => {
     // we can now read the agent context from the ALS store
     const { agent } = getCurrentAgent<Chat>();
@@ -80,7 +80,7 @@ const scheduleTask = tool({
  */
 const getScheduledTasks = tool({
   description: "List all tasks that have been scheduled",
-  parameters: z.object({}),
+  inputSchema: z.object({}),
   execute: async () => {
     const { agent } = getCurrentAgent<Chat>();
 
@@ -103,7 +103,7 @@ const getScheduledTasks = tool({
  */
 const cancelScheduledTask = tool({
   description: "Cancel a scheduled task using its ID",
-  parameters: z.object({
+  inputSchema: z.object({
     taskId: z.string().describe("The ID of the task to cancel"),
   }),
   execute: async ({ taskId }) => {
@@ -133,13 +133,18 @@ export const tools = {
 };
 
 /**
- * Implementation of confirmation-required tools
- * This object contains the actual logic for tools that need human approval
- * Each function here corresponds to a tool above that doesn't have an execute function
+ * Execution functions for tools that require human confirmation
+ * These are separate from the tool definitions to allow for approval flow
  */
 export const executions = {
   getWeatherInformation: async ({ city }: { city: string }) => {
-    console.log(`Getting weather information for ${city}`);
-    return `The weather in ${city} is sunny`;
+    // removed debug log
+
+    // Simulate API call delay
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
+    return `The weather in ${city} is sunny and 72°F with light clouds.`;
   },
+  // Note: checkUsersCalendar is not included here because it has its own execute function
+  // and handles Auth0 AI federated connection flow automatically
 };

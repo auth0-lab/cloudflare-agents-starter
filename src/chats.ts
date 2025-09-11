@@ -18,9 +18,7 @@ export const createNewChat = async ({
   env: Env;
 }): Promise<string> => {
   const id = generateId();
-  const chatID = env.Chat.idFromName(id);
-  const stub = env.Chat.get(chatID);
-  await stub.setOwner(userID);
+  // Note: setOwner method was removed in agent framework update
   //insert the chat into the list
   await env.ChatList.put(
     userID,

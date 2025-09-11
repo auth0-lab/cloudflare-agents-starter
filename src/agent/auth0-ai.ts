@@ -1,3 +1,4 @@
+import { SUBJECT_TOKEN_TYPES } from "@auth0/ai";
 import { Auth0AI, setGlobalAIContext } from "@auth0/ai-vercel";
 import {
   AccessDeniedInterrupt,
@@ -18,27 +19,43 @@ const getAgent = () => {
 setGlobalAIContext(() => ({ threadID: getAgent().name }));
 
 const auth0AI = new Auth0AI({
+  auth0: {
+    domain: process.env.AUTH0_DOMAIN!,
+    clientId: process.env.AUTH0_RESOURCE_SERVER_CLIENT_ID!, // Resource server client ID for token exchange
+    clientSecret: process.env.AUTH0_RESOURCE_SERVER_CLIENT_SECRET!, // Resource server client secret
+  },
   store: () => {
     return getAgent().auth0AIStore;
   },
 });
 
 export const withGoogleCalendar = auth0AI.withTokenForConnection({
-  refreshToken: async () => {
-    const credentials = getAgent().getCredentials();
-    return credentials?.refresh_token;
+  accessToken: async () => {
+    try {
+      const agent = getAgent();
+      const { accessToken } = await agent.getStoredAuthData();
+      return accessToken;
+    } catch (error) {
+      console.error("Error accessing access token:", error);
+      return undefined;
+    }
   },
+  subjectTokenType: SUBJECT_TOKEN_TYPES.SUBJECT_TYPE_ACCESS_TOKEN,
   connection: "google-oauth2",
   scopes: ["https://www.googleapis.com/auth/calendar.freebusy"],
 });
 
 export const withAsyncUserConfirmation = auth0AI.withAsyncUserConfirmation({
   userID: async () => {
-    const owner = await getAgent().getOwner();
-    if (!owner) {
-      throw new Error("No owner found");
+    // Get the user ID from agent's stored authentication data
+    try {
+      const agent = getAgent();
+      const { userID } = await agent.getStoredAuthData();
+      return userID || "unknown";
+    } catch (error) {
+      console.error("Error accessing user ID:", error);
+      return "unknown";
     }
-    return owner;
   },
   // onAuthorizationRequest: "block",
   scopes: ["stock:buy"],
@@ -47,7 +64,12 @@ export const withAsyncUserConfirmation = auth0AI.withAsyncUserConfirmation({
     interrupt: AuthorizationPendingInterrupt | AuthorizationPollingInterrupt,
     context
   ) => {
-    await getAgent().scheduleAsyncUserConfirmationCheck({ interrupt, context });
+    // scheduleAsyncUserConfirmationCheck is provided by the AsyncUserConfirmationResumer mixin at runtime
+    // but not declared on the Chat type, so cast to any to avoid TypeScript errors.
+    await (getAgent() as any).scheduleAsyncUserConfirmationCheck({
+      interrupt,
+      context,
+    });
   },
   onUnauthorized: async (e: Error) => {
     if (e instanceof AccessDeniedInterrupt) {

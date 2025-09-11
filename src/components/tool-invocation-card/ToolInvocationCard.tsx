@@ -8,19 +8,32 @@ import { useState } from "react";
 interface ToolInvocation {
   toolName: string;
   toolCallId: string;
-  state: "call" | "result" | "partial-call";
+  state:
+    | "call"
+    | "result"
+    | "partial-call"
+    | "input-available"
+    | "output-available";
   step?: number;
   args: Record<string, unknown>;
-  result?: {
-    content?: Array<{ type: string; text: string }>;
-  };
+  result?:
+    | string
+    | {
+        content?: Array<{ type: string; text: string }>;
+      };
+  output?: string; // For output-available state
+  input?: string; // For input-available state
 }
 
 interface ToolInvocationCardProps {
   toolInvocation: ToolInvocation;
   toolCallId: string;
   needsConfirmation: boolean;
-  addToolResult: (args: { toolCallId: string; result: string }) => void;
+  addToolResult: (args: {
+    toolName: string;
+    toolCallId: string;
+    result: string;
+  }) => void;
 }
 
 export function ToolInvocationCard({
@@ -49,9 +62,10 @@ export function ToolInvocationCard({
         </div>
         <h4 className="font-medium flex items-center gap-2 flex-1 text-left">
           {toolInvocation.toolName}
-          {!needsConfirmation && toolInvocation.state === "result" && (
-            <span className="text-xs text-[#F48120]/70">✓ Completed</span>
-          )}
+          {!needsConfirmation &&
+            toolInvocation.state === "output-available" && (
+              <span className="text-xs text-[#F48120]/70">✓ Completed</span>
+            )}
         </h4>
         <CaretDown
           size={16}
@@ -75,68 +89,83 @@ export function ToolInvocationCard({
             </pre>
           </div>
 
-          {needsConfirmation && toolInvocation.state === "call" && (
-            <div className="flex gap-2 justify-end">
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={() =>
-                  addToolResult({
-                    toolCallId,
-                    result: APPROVAL.NO,
-                  })
-                }
-              >
-                Reject
-              </Button>
-              <Tooltip content={"Accept action"}>
+          {needsConfirmation && toolInvocation.state === "input-available" && (
+            <>
+              <div className="mb-3 border-t border-[#F48120]/10 pt-3">
+                <h5 className="text-xs font-medium mb-1 text-muted-foreground">
+                  This tool requires your confirmation before execution.
+                </h5>
+              </div>
+              <div className="flex gap-2 justify-end">
                 <Button
                   variant="primary"
                   size="sm"
                   onClick={() =>
                     addToolResult({
+                      toolName: toolInvocation.toolName,
                       toolCallId,
-                      result: APPROVAL.YES,
+                      result: APPROVAL.NO,
                     })
                   }
                 >
-                  Approve
+                  Reject
                 </Button>
-              </Tooltip>
-            </div>
+                <Tooltip content={"Accept action"}>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() =>
+                      addToolResult({
+                        toolName: toolInvocation.toolName,
+                        toolCallId,
+                        result: APPROVAL.YES,
+                      })
+                    }
+                  >
+                    Approve
+                  </Button>
+                </Tooltip>
+              </div>
+            </>
           )}
 
-          {!needsConfirmation && toolInvocation.state === "result" && (
-            <div className="mt-3 border-t border-[#F48120]/10 pt-3">
-              <h5 className="text-xs font-medium mb-1 text-muted-foreground">
-                Result:
-              </h5>
-              <pre className="bg-background/80 p-2 rounded-md text-xs overflow-auto whitespace-pre-wrap break-words max-w-[450px]">
-                {(() => {
-                  const result = toolInvocation.result;
-                  if (typeof result === "object" && result.content) {
-                    return result.content
-                      .map((item: { type: string; text: string }) => {
-                        if (
-                          item.type === "text" &&
-                          item.text.startsWith("\n~ Page URL:")
-                        ) {
-                          const lines = item.text.split("\n").filter(Boolean);
-                          return lines
-                            .map(
-                              (line: string) => `- ${line.replace("\n~ ", "")}`
-                            )
-                            .join("\n");
-                        }
-                        return item.text;
-                      })
-                      .join("\n");
-                  }
-                  return JSON.stringify(result, null, 2);
-                })()}
-              </pre>
-            </div>
-          )}
+          {!needsConfirmation &&
+            toolInvocation.state === "output-available" && (
+              <div className="mt-3 border-t border-[#F48120]/10 pt-3">
+                <h5 className="text-xs font-medium mb-1 text-muted-foreground">
+                  Result:
+                </h5>
+                <pre className="bg-background/80 p-2 rounded-md text-xs overflow-auto whitespace-pre-wrap break-words max-w-[450px]">
+                  {(() => {
+                    const result =
+                      toolInvocation.output || toolInvocation.result;
+                    if (typeof result === "string") {
+                      return result;
+                    }
+                    if (typeof result === "object" && result.content) {
+                      return result.content
+                        .map((item: { type: string; text: string }) => {
+                          if (
+                            item.type === "text" &&
+                            item.text.startsWith("\n~ Page URL:")
+                          ) {
+                            const lines = item.text.split("\n").filter(Boolean);
+                            return lines
+                              .map(
+                                (line: string) =>
+                                  `- ${line.replace("\n~ ", "")}`
+                              )
+                              .join("\n");
+                          }
+                          return item.text;
+                        })
+                        .join("\n");
+                    }
+                    return JSON.stringify(result, null, 2);
+                  })()}
+                </pre>
+              </div>
+            )}
         </div>
       </div>
     </Card>

@@ -4,11 +4,17 @@ SESSION_STORE=cloudflare-kv
 SESSION_STORE_NAMESPACE=Session
 
 
-#auth0
+#AUTH0
 AUTH0_DOMAIN="YOUR-ACCOUNT.us.auth0.com"
 AUTH0_CLIENT_ID="YOUR CLIENT ID"
 AUTH0_CLIENT_SECRET="YOUR CLIENT SECRET"
 AUTH0_SESSION_ENCRYPTION_KEY="RANDOM 32 CHARS"
 AUTH0_AUDIENCE="YOUR AUDIENCE"
+
+# Auth0 Resource Server Client Configuration (for token exchange with Token Vault)
+# These credentials belong to a special "resource_server" client that can perform token exchanges
+# on behalf of the user within your Langgraph API
+AUTH0_RESOURCE_SERVER_CLIENT_ID="<your-resource-server-client-id>"
+AUTH0_RESOURCE_SERVER_CLIENT_SECRET="<your-resource-server-client-secret>"
 
 BASE_URL="http://localhost:3000"
