@@ -8,7 +8,6 @@ import {
   errorSerializer,
   withInterruptions,
 } from "@auth0/ai-vercel/interrupts";
-import { AuthAgent, OwnedAgent } from "@auth0/auth0-cloudflare-agents-api";
 import type { Schedule } from "agents";
 import { AIChatAgent } from "agents/ai-chat-agent";
 import { getSchedulePrompt } from "agents/schedule";
@@ -28,25 +27,7 @@ import { cleanupMessages, processToolCalls } from "./utils";
 
 const model = openai("gpt-4o-2024-11-20");
 
-// Type-compatible wrapper for AuthAgent that works with the new agents framework
-const AuthAgentCompat = (Base: any) => {
-  // @ts-ignore - Force compatibility between old and new agent frameworks
-  return AuthAgent(Base);
-};
-
-// Type-compatible wrapper for OwnedAgent that works with the new agents framework
-const OwnedAgentCompat = (Base: any) => {
-  // @ts-ignore - Force compatibility between old and new agent frameworks
-  return OwnedAgent(Base);
-};
-
 const SuperAgent = extend(AIChatAgent<Env>)
-  // Authenticate requests and connections using
-  // JSON Web Token (JWT) Profile for OAuth 2.0 Access Tokens.
-  // .with(AuthAgentCompat)
-  // // Every durable object has an owner set during creation.
-  // // Other uses will be rejected.
-  // .with(OwnedAgentCompat)
   // Take advantage of Agent scheduling capabilities
   // to handle async user confirmation polling.
   .with(AsyncUserConfirmationResumer)
