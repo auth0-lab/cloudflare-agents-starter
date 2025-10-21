@@ -1,4 +1,4 @@
-import type { Message } from "@ai-sdk/react";
+import type { UIMessage } from "@ai-sdk/react";
 import { useAgentChatInterruptions } from "@auth0/ai-cloudflare/react";
 import { useAgent } from "agents/react";
 import { use, useCallback, useEffect, useRef, useState } from "react";
@@ -14,10 +14,10 @@ import { Toggle } from "@/components/toggle/Toggle";
 import { ToolInvocationCard } from "@/components/tool-invocation-card/ToolInvocationCard";
 
 // Icon imports
-import { GoogleCalendarIcon } from "@/components/auth0-ai/FederatedConnections/icons";
-import { EnsureAPIAccessPopup } from "@/components/auth0-ai/FederatedConnections/popup";
+import { GoogleCalendarIcon } from "@/components/auth0-ai/TokenVault/icons";
+import { TokenVaultConsentPopup } from "@/components/auth0-ai/TokenVault/popup";
 import useChatTitle from "@/hooks/useChatTitle";
-import { FederatedConnectionInterrupt } from "@auth0/ai/interrupts";
+import { TokenVaultInterrupt } from "@auth0/ai/interrupts";
 import { Bug, PaperPlaneTilt, Robot, Trash } from "@phosphor-icons/react";
 import { useNavigate, useParams } from "react-router";
 import { Tooltip } from "../components/tooltip/Tooltip";
@@ -82,7 +82,7 @@ export default function Chat() {
     agentMessages.length > 0 && scrollToBottom();
   }, [agentMessages, scrollToBottom]);
 
-  const pendingToolCallConfirmation = agentMessages.some((m: Message) =>
+  const pendingToolCallConfirmation = agentMessages.some((m: UIMessage) =>
     m.parts?.some(
       (part) =>
         part.type === "tool-invocation" &&
@@ -90,7 +90,7 @@ export default function Chat() {
         (toolsRequiringConfirmation.includes(
           part.toolInvocation.toolName as keyof typeof tools
         ) ||
-          FederatedConnectionInterrupt.isInterrupt(toolInterrupt))
+          TokenVaultInterrupt.isInterrupt(toolInterrupt))
     )
   );
 
@@ -151,7 +151,7 @@ export default function Chat() {
             </div>
           )}
 
-          {agentMessages.map((m: Message, index) => {
+          {agentMessages.map((m: UIMessage, index) => {
             const isUser = m.role === "user";
             const showAvatar =
               index === 0 || agentMessages[index - 1]?.role !== m.role;
@@ -228,13 +228,13 @@ export default function Chat() {
                             const toolCallId = toolInvocation.toolCallId;
                             if (
                               toolInterrupt &&
-                              FederatedConnectionInterrupt.isInterrupt(
+                              TokenVaultInterrupt.isInterrupt(
                                 toolInterrupt
                               ) &&
                               toolInvocation.state === "call"
                             ) {
                               return (
-                                <EnsureAPIAccessPopup
+                                <TokenVaultConsentPopup
                                   key={toolCallId}
                                   interrupt={toolInterrupt}
                                   auth={{ authorizePath: "/auth/login" }}

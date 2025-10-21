@@ -23,7 +23,7 @@ const auth0AI = new Auth0AI({
   },
 });
 
-export const withGoogleCalendar = auth0AI.withTokenForConnection({
+export const withGoogleCalendar = auth0AI.withTokenVault({
   refreshToken: async () => {
     const credentials = getAgent().getCredentials();
     return credentials?.refresh_token;
@@ -32,7 +32,7 @@ export const withGoogleCalendar = auth0AI.withTokenForConnection({
   scopes: ["https://www.googleapis.com/auth/calendar.freebusy"],
 });
 
-export const withAsyncUserConfirmation = auth0AI.withAsyncUserConfirmation({
+export const withAsyncAuthorization = auth0AI.withAsyncAuthorization({
   userID: async () => {
     const owner = await getAgent().getOwner();
     if (!owner) {

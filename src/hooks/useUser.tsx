@@ -1,6 +1,7 @@
 import useSWR from "swr";
 
 const userFetcher = async () => {
+  console.log("Fetching user data...");
   const response = await fetch("/user", {
     method: "GET",
     credentials: "include",
@@ -19,6 +20,7 @@ const userFetcher = async () => {
 };
 
 export default function useUser(): Record<string, any> {
+  console.log("useUser hook called");
   const { data, mutate, error } = useSWR("api_user", userFetcher, {
     refreshInterval: 20000,
   });
