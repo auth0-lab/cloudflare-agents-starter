@@ -36,6 +36,7 @@ export default function Chat() {
 
   const [showDebug, setShowDebug] = useState(false);
   const [textareaHeight, setTextareaHeight] = useState("auto");
+  const [input, setInput] = useState<string>("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = useCallback(() => {
@@ -63,19 +64,18 @@ export default function Chat() {
     name: threadID ?? undefined,
   });
 
+  const chat = useAgentChatInterruptions({
+    agent,
+    id: threadID,
+  });
+
   const {
     messages: agentMessages,
-    input: agentInput,
-    handleInputChange: handleAgentInputChange,
-    handleSubmit: handleAgentSubmit,
+    sendMessage: handleAgentSubmit,
     addToolResult,
     clearHistory,
     toolInterrupt,
-  } = useAgentChatInterruptions({
-    agent,
-    maxSteps: 5,
-    id: threadID,
-  });
+  } = chat;
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -93,10 +93,6 @@ export default function Chat() {
           TokenVaultInterrupt.isInterrupt(toolInterrupt))
     )
   );
-
-  const formatTime = (date: Date) => {
-    return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-  };
 
   return (
     <Layout>
@@ -210,19 +206,9 @@ export default function Chat() {
                                     )}
                                   />
                                 </Card>
-                                <p
-                                  className={`text-xs text-muted-foreground mt-1 ${
-                                    isUser ? "text-right" : "text-left"
-                                  }`}
-                                >
-                                  {formatTime(
-                                    new Date(m.createdAt as unknown as string)
-                                  )}
-                                </p>
                               </div>
                             );
                           }
-
                           if (part.type === "tool-invocation") {
                             const toolInvocation = part.toolInvocation;
                             const toolCallId = toolInvocation.toolCallId;
@@ -272,6 +258,24 @@ export default function Chat() {
                               />
                             );
                           }
+                          if (part?.type && part.type.startsWith('tool-') && part.toolCallId && part.state === 'output-available' || part.output !== undefined) {
+                            return (
+                              <div key={i}>
+                              <Card
+                                className={`p-3 rounded-md bg-neutral-100 dark:bg-neutral-900 ${
+                                  isUser
+                                    ? "rounded-br-none"
+                                    : "rounded-bl-none border-assistant-border"
+                                } relative`}
+                              >
+                                <MemoizedMarkdown
+                                  id={`${m.id}-${i}`}
+                                  content={part.output || ""}
+                                />
+                              </Card>
+                            </div>
+                            )    
+                          }
                           return null;
                         })}
                       </div>
@@ -287,13 +291,10 @@ export default function Chat() {
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            handleAgentSubmit(e, {
-              data: {
-                annotations: {
-                  hello: "world",
-                },
-              },
-            });
+            handleAgentSubmit(
+              { parts: [{ type: "text", text: input }], role: "user" }
+            );
+            setInput("");
             setTextareaHeight("auto"); // Reset height after submission
           }}
           className="p-3 bg-neutral-50 absolute bottom-0 left-0 right-0 z-10 border-t border-neutral-300 dark:border-neutral-800 dark:bg-neutral-900"
@@ -308,9 +309,9 @@ export default function Chat() {
                     : "Send a message..."
                 }
                 className="flex w-full border border-neutral-200 dark:border-neutral-700 px-3 py-2 ring-offset-background placeholder:text-neutral-500 dark:placeholder:text-neutral-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-300 dark:focus-visible:ring-neutral-700 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-neutral-900 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm min-h-[24px] max-h-[calc(75dvh)] overflow-hidden resize-none rounded-2xl !text-base pb-10 dark:bg-neutral-900"
-                value={agentInput}
+                value={input}
                 onChange={(e) => {
-                  handleAgentInputChange(e);
+                  setInput(e.target.value)
                   // Auto-resize the textarea
                   e.target.style.height = "auto";
                   e.target.style.height = `${e.target.scrollHeight}px`;
@@ -323,8 +324,11 @@ export default function Chat() {
                     !e.nativeEvent.isComposing
                   ) {
                     e.preventDefault();
-                    handleAgentSubmit(e as unknown as React.FormEvent);
-                    setTextareaHeight("auto"); // Reset height on Enter submission
+                    handleAgentSubmit(
+                      { parts: [{ type: "text", text: input }], role: "user" }
+                    );
+                    setInput("");
+                    setTextareaHeight("auto"); // Reset height after submission
                   }
                 }}
                 rows={2}
@@ -334,7 +338,7 @@ export default function Chat() {
                 <button
                   type="submit"
                   className="inline-flex items-center cursor-pointer justify-center gap-2 whitespace-nowrap text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 rounded-full p-1.5 h-fit border border-neutral-200 dark:border-neutral-800"
-                  disabled={pendingToolCallConfirmation || !agentInput.trim()}
+                  disabled={pendingToolCallConfirmation || !input.trim()}
                 >
                   <PaperPlaneTilt size={16} />
                 </button>

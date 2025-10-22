@@ -20,6 +20,7 @@ import { AIChatAgent } from "agents/ai-chat-agent";
 //   generateText,
 //   streamText,
 // } from "ai";
+import { Auth0Interrupt } from "@auth0/ai/interrupts";
 import {
   convertToModelMessages,
   createUIMessageStream,
@@ -127,11 +128,17 @@ export class Chat extends SuperAgent {
         async ({ writer }) => {
           const result = streamText({
             model: openai("gpt-4o-mini"),
-            system:
-              "You are a friendly assistant! Keep your responses concise and helpful.",
+            system: `You are a helpful assistant that can do various tasks...
+              If the user asks to schedule a task, use the schedule tool to schedule the task.
+            `,
             messages: convertToModelMessages(this.messages),
             tools: allTools,
-
+            onError: (error) => {
+              if (!Auth0Interrupt.isInterrupt(error)) {
+                return;
+              }
+              console.error("Error while streaming:", error);
+            },
             onFinish: (output) => {
               if (output.finishReason === "tool-calls") {
                 const lastMessage = output.content[output.content.length - 1];
@@ -144,7 +151,8 @@ export class Chat extends SuperAgent {
                     toolArgs: input,
                   };
 
-                  throw serializableError;
+                  // throw serializableError;
+                  return;
                 }
               }
             },

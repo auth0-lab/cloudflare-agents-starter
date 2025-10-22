@@ -1,14 +1,13 @@
 {
+  "version": "0.2.0",
   "configurations": [
     {
-      "name": "Miniflare",
-      "type": "node",
-      "request": "attach",
-      "port": 9229,
-      "cwd": "/",
-      "resolveSourceMapLocations": null,
-      "attachExistingChildren": false,
-      "autoAttachChildProcesses": false
+      "name": "Next.js: debug server-side",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "nvm use 22 && npm start",
+      "cwd": "${workspaceFolder}/",
+      "sourceMaps": true
     }
   ]
 }

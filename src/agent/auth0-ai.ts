@@ -41,8 +41,16 @@ export const withAsyncAuthorization = auth0AI.withAsyncAuthorization({
     return owner;
   },
   // onAuthorizationRequest: "block",
-  scopes: ["stock:buy"],
-  audience: "https://api.mystocks.example",
+  onAuthorizationRequest: async (authReq, creds) => {
+    console.log(
+      `An authorization request was sent to your mobile device or your email.`
+    );
+    await creds;
+    console.log(`Thanks for approving the order.`);
+  },
+  scopes: ["stock:trade"],
+  // audience: "https://api.mystocks.example",
+  audience: process.env["AUDIENCE"]!,
   onAuthorizationInterrupt: async (
     interrupt: AuthorizationPendingInterrupt | AuthorizationPollingInterrupt,
     context
