@@ -85,12 +85,13 @@ export default function Chat() {
   const pendingToolCallConfirmation = agentMessages.some((m: UIMessage) =>
     m.parts?.some(
       (part) =>
-        part.type === "tool-invocation" &&
-        part.toolInvocation.state === "call" &&
-        (toolsRequiringConfirmation.includes(
-          part.toolInvocation.toolName as keyof typeof tools
-        ) ||
-          TokenVaultInterrupt.isInterrupt(toolInterrupt)) ||  TokenVaultInterrupt.isInterrupt(toolInterrupt)
+        (part.type === "tool-invocation" &&
+          part.toolInvocation.state === "call" &&
+          (toolsRequiringConfirmation.includes(
+            part.toolInvocation.toolName as keyof typeof tools
+          ) ||
+            TokenVaultInterrupt.isInterrupt(toolInterrupt))) ||
+        TokenVaultInterrupt.isInterrupt(toolInterrupt)
     )
   );
 
@@ -209,43 +210,54 @@ export default function Chat() {
                               </div>
                             );
                           }
-                          if (part?.type && part.type.startsWith('tool-') && part.toolCallId && part.state === 'output-available' && typeof part.output === 'string' ) {
+                          if (
+                            part?.type &&
+                            part.type.startsWith("tool-") &&
+                            part.toolCallId &&
+                            part.state === "output-available" &&
+                            typeof part.output === "string"
+                          ) {
                             return (
                               <div key={i}>
-                              <Card
-                                className={`p-3 rounded-md bg-neutral-100 dark:bg-neutral-900 ${
-                                  isUser
-                                    ? "rounded-br-none"
-                                    : "rounded-bl-none border-assistant-border"
-                                } relative`}
-                              >
-                                <MemoizedMarkdown
-                                  id={`${m.id}-${i}`}
-                                  content={part.output || ""}
-                                />
-                              </Card>
-                            </div>
-                            )    
+                                <Card
+                                  className={`p-3 rounded-md bg-neutral-100 dark:bg-neutral-900 ${
+                                    isUser
+                                      ? "rounded-br-none"
+                                      : "rounded-bl-none border-assistant-border"
+                                  } relative`}
+                                >
+                                  <MemoizedMarkdown
+                                    id={`${m.id}-${i}`}
+                                    content={part.output || ""}
+                                  />
+                                </Card>
+                              </div>
+                            );
                           }
-                          if (part?.type && part.type.startsWith('tool-') && toolInterrupt && TokenVaultInterrupt.isInterrupt(toolInterrupt)) {
+                          if (
+                            part?.type &&
+                            part.type.startsWith("tool-") &&
+                            toolInterrupt &&
+                            TokenVaultInterrupt.isInterrupt(toolInterrupt)
+                          ) {
                             return (
                               <TokenVaultConsentPopup
-                            key={toolInterrupt?.toolCall?.id}
-                            interrupt={toolInterrupt}
-                            auth={{ authorizePath: "/auth/login" }}
-                            connectWidget={{
-                              icon: (
-                                <div className="bg-gray-200 p-3 rounded-lg flex-wrap">
-                                  <GoogleCalendarIcon />
-                                </div>
-                              ),
-                              title: "Google Calendar Access",
-                              description:
-                                "We need access to your google Calendar in order to call this tool...",
-                              action: { label: "Grant" },
-                            }}
-                          />
-                            )
+                                key={toolInterrupt?.toolCall?.id}
+                                interrupt={toolInterrupt}
+                                auth={{ authorizePath: "/auth/login" }}
+                                connectWidget={{
+                                  icon: (
+                                    <div className="bg-gray-200 p-3 rounded-lg flex-wrap">
+                                      <GoogleCalendarIcon />
+                                    </div>
+                                  ),
+                                  title: "Google Calendar Access",
+                                  description:
+                                    "We need access to your google Calendar in order to call this tool...",
+                                  action: { label: "Grant" },
+                                }}
+                              />
+                            );
                           }
                           if (part.type === "tool-invocation") {
                             const toolInvocation = part.toolInvocation;
@@ -284,9 +296,10 @@ export default function Chat() {
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            handleAgentSubmit(
-              { parts: [{ type: "text", text: input }], role: "user" }
-            );
+            handleAgentSubmit({
+              parts: [{ type: "text", text: input }],
+              role: "user",
+            });
             setInput("");
             setTextareaHeight("auto"); // Reset height after submission
           }}
@@ -304,7 +317,7 @@ export default function Chat() {
                 className="flex w-full border border-neutral-200 dark:border-neutral-700 px-3 py-2 ring-offset-background placeholder:text-neutral-500 dark:placeholder:text-neutral-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-300 dark:focus-visible:ring-neutral-700 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-neutral-900 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm min-h-[24px] max-h-[calc(75dvh)] overflow-hidden resize-none rounded-2xl !text-base pb-10 dark:bg-neutral-900"
                 value={input}
                 onChange={(e) => {
-                  setInput(e.target.value)
+                  setInput(e.target.value);
                   // Auto-resize the textarea
                   e.target.style.height = "auto";
                   e.target.style.height = `${e.target.scrollHeight}px`;
@@ -317,9 +330,10 @@ export default function Chat() {
                     !e.nativeEvent.isComposing
                   ) {
                     e.preventDefault();
-                    handleAgentSubmit(
-                      { parts: [{ type: "text", text: input }], role: "user" }
-                    );
+                    handleAgentSubmit({
+                      parts: [{ type: "text", text: input }],
+                      role: "user",
+                    });
                     setInput("");
                     setTextareaHeight("auto"); // Reset height after submission
                   }
