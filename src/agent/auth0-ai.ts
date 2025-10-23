@@ -41,7 +41,7 @@ export const withAsyncAuthorization = auth0AI.withAsyncAuthorization({
     return owner;
   },
   // onAuthorizationRequest: "block",
-  onAuthorizationRequest: async (authReq, creds) => {
+  onAuthorizationRequest: async (creds) => {
     console.log(
       `An authorization request was sent to your mobile device or your email.`
     );
@@ -49,7 +49,7 @@ export const withAsyncAuthorization = auth0AI.withAsyncAuthorization({
     console.log(`Thanks for approving the order.`);
   },
   scopes: ["stock:trade"],
-  audience: process.env["AUDIENCE"]!,
+  audience: process.env.AUDIENCE!,
   onAuthorizationInterrupt: async (
     interrupt: AuthorizationPendingInterrupt | AuthorizationPollingInterrupt,
     context

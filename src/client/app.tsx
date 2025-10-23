@@ -179,8 +179,8 @@ export default function Chat() {
                         {m.parts?.map((part, i) => {
                           if (part.type === "text") {
                             return (
-                              // biome-ignore lint/suspicious/noArrayIndexKey: immutable index
-                              <div key={i}>
+                              
+                              <div key={part.toolCallId}>
                                 <Card
                                   className={`p-3 rounded-md bg-neutral-100 dark:bg-neutral-900 ${
                                     isUser
@@ -211,14 +211,13 @@ export default function Chat() {
                             );
                           }
                           if (
-                            part?.type &&
-                            part.type.startsWith("tool-") &&
+                            part?.type?.startsWith("tool-") &&
                             part.toolCallId &&
                             part.state === "output-available" &&
                             typeof part.output === "string"
                           ) {
                             return (
-                              <div key={i}>
+                              <div key={part.toolCallId}>
                                 <Card
                                   className={`p-3 rounded-md bg-neutral-100 dark:bg-neutral-900 ${
                                     isUser
@@ -235,8 +234,7 @@ export default function Chat() {
                             );
                           }
                           if (
-                            part?.type &&
-                            part.type.startsWith("tool-") &&
+                            part?.type?.startsWith("tool-") &&
                             toolInterrupt &&
                             TokenVaultInterrupt.isInterrupt(toolInterrupt)
                           ) {

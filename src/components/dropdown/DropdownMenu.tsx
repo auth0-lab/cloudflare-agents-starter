@@ -183,6 +183,7 @@ const DropdownMenu = ({
               </DropdownMenuPrimitive.Item>
             );
           }
+          return null;
         })}
       </DropdownMenuPrimitive.Content>
     </DropdownMenuPrimitive.Portal>

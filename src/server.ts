@@ -135,15 +135,15 @@ app.use("/agents/*", requiresAuth("error"), async (c, next) => {
       async onBeforeRequest(req) {
         return addToken(req);
       },
-      async onBeforeConnect(req, lobby) {
+      async onBeforeConnect(req) {
         return addToken(req);
       },
     },
-    // @ts-ignore
+    // @ts-expect-error
   })(c, next);
 });
 
-app.use("*", async (c, next) => {
+app.use("*", async (c) => {
   const res = await c.env.ASSETS.fetch(c.req.raw);
   return new Response(res.body, res);
 });

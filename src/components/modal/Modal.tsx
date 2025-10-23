@@ -21,9 +21,12 @@ export const Modal = ({
   isOpen,
   onClose,
 }: ModalProps) => {
+  const modalRefOutside = useClickOutside(onClose);
+  const modalRefDefult = useRef<HTMLDivElement>(null);
+
   const modalRef = clickOutsideToClose
-    ? useClickOutside(onClose)
-    : useRef<HTMLDivElement>(null);
+    ? modalRefOutside
+    : modalRefDefult
 
   // Stop site overflow when modal is open
   useEffect(() => {

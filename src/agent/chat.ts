@@ -9,7 +9,6 @@ import {
   withInterruptions,
 } from "@auth0/ai-vercel/interrupts";
 import { AuthAgent, OwnedAgent } from "@auth0/auth0-cloudflare-agents-api";
-import type { Schedule } from "agents";
 import { AIChatAgent } from "agents/ai-chat-agent";
 import {
   convertToModelMessages,
@@ -103,7 +102,7 @@ export class Chat extends SuperAgent {
     return createUIMessageStreamResponse({ stream });
   }
 
-  async executeTask(description: string, task: Schedule<string>) {
+  async executeTask(description: string) {
     await this.saveMessages([
       ...this.messages,
       {
