@@ -11,22 +11,13 @@ import {
 import { AuthAgent, OwnedAgent } from "@auth0/auth0-cloudflare-agents-api";
 import type { Schedule } from "agents";
 import { AIChatAgent } from "agents/ai-chat-agent";
-// import {
-//   type Message,
-//   type StreamTextOnFinishCallback,
-//   type ToolSet,
-//   createDataStreamResponse,
-//   generateId,
-//   generateText,
-//   streamText,
-// } from "ai";
-import { Auth0Interrupt } from "@auth0/ai/interrupts";
 import {
   convertToModelMessages,
   createUIMessageStream,
   createUIMessageStreamResponse,
   generateId,
   generateText,
+  stepCountIs,
   streamText,
   type UIMessage,
 } from "ai";
@@ -56,71 +47,12 @@ export class Chat extends SuperAgent {
    * Handles incoming chat messages and manages the response stream
    * @param onFinish - Callback function executed when streaming completes
    */
-  async onChatMessage(
-    onFinish: StreamTextOnFinishCallback<ToolSet>,
-    options?: { abortSignal?: AbortSignal }
-  ) {
+  async onChatMessage() {
     // Collect all tools, including MCP tools
     const allTools = {
       ...tools,
       ...this.mcp.unstable_getAITools(),
     };
-    // const claims = this.getClaims();
-    // Create a streaming response that handles both text and tool outputs
-    //     const dataStreamResponse = createDataStreamResponse({
-    //       execute: async (dataStream) => {
-    //         // Invoke Auth0 interrupted tools
-    //         await invokeTools({
-    //           messages: this.messages,
-    //           tools: allTools,
-    //         });
-
-    //         // Process any pending tool calls from previous messages
-    //         // This handles human-in-the-loop confirmations for tools
-    //         const processedMessages = await processToolCalls({
-    //           messages: this.messages,
-    //           dataStream,
-    //           tools: allTools,
-    //           executions,
-    //         });
-
-    //         // Stream the AI response using GPT-4
-    //         const result = streamText({
-    //           model,
-    //           system: `You are a helpful assistant that can do various tasks...
-
-    // ${unstable_getSchedulePrompt({ date: new Date() })}
-
-    // If the user asks to schedule a task, use the schedule tool to schedule the task.
-
-    // The name of the user is ${claims?.name ?? "unknown"}.
-    // `,
-    //           messages: processedMessages,
-    //           tools: allTools,
-    //           onFinish: async (args) => {
-    //             await this.generateTitle(this.messages, args.text);
-
-    //             onFinish(
-    //               args as Parameters<StreamTextOnFinishCallback<ToolSet>>[0]
-    //             );
-    //             // await this.mcp.closeConnection(mcpConnection.id);
-    //           },
-    //           onError: (error) => {
-    //             if (!Auth0Interrupt.isInterrupt(error)) {
-    //               return;
-    //             }
-    //             console.error("Error while streaming:", error);
-    //           },
-    //           maxSteps: 10,
-    //         });
-
-    //         // Merge the AI response stream with tool execution outputs
-    //         result.mergeIntoDataStream(dataStream);
-    //       },
-    //       onError: errorSerializer(),
-    //     });
-
-    //     return dataStreamResponse;
 
     const stream = createUIMessageStream({
       originalMessages: this.messages,
@@ -133,13 +65,8 @@ export class Chat extends SuperAgent {
             `,
             messages: convertToModelMessages(this.messages),
             tools: allTools,
-            onError: (error) => {
-              if (!Auth0Interrupt.isInterrupt(error)) {
-                return;
-              }
-              console.error("Error while streaming:", error);
-            },
-            onFinish: (output) => {
+            stopWhen: stepCountIs(5),
+            onStepFinish: (output) => {
               if (output.finishReason === "tool-calls") {
                 const lastMessage = output.content[output.content.length - 1];
                 if (lastMessage?.type === "tool-error") {
@@ -151,8 +78,7 @@ export class Chat extends SuperAgent {
                     toolArgs: input,
                   };
 
-                  // throw serializableError;
-                  return;
+                  throw serializableError;
                 }
               }
             },

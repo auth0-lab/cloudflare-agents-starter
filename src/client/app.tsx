@@ -90,7 +90,7 @@ export default function Chat() {
         (toolsRequiringConfirmation.includes(
           part.toolInvocation.toolName as keyof typeof tools
         ) ||
-          TokenVaultInterrupt.isInterrupt(toolInterrupt))
+          TokenVaultInterrupt.isInterrupt(toolInterrupt)) ||  TokenVaultInterrupt.isInterrupt(toolInterrupt)
     )
   );
 
@@ -209,36 +209,47 @@ export default function Chat() {
                               </div>
                             );
                           }
+                          if (part?.type && part.type.startsWith('tool-') && part.toolCallId && part.state === 'output-available' && typeof part.output === 'string' ) {
+                            return (
+                              <div key={i}>
+                              <Card
+                                className={`p-3 rounded-md bg-neutral-100 dark:bg-neutral-900 ${
+                                  isUser
+                                    ? "rounded-br-none"
+                                    : "rounded-bl-none border-assistant-border"
+                                } relative`}
+                              >
+                                <MemoizedMarkdown
+                                  id={`${m.id}-${i}`}
+                                  content={part.output || ""}
+                                />
+                              </Card>
+                            </div>
+                            )    
+                          }
+                          if (part?.type && part.type.startsWith('tool-') && toolInterrupt && TokenVaultInterrupt.isInterrupt(toolInterrupt)) {
+                            return (
+                              <TokenVaultConsentPopup
+                            key={toolInterrupt?.toolCall?.id}
+                            interrupt={toolInterrupt}
+                            auth={{ authorizePath: "/auth/login" }}
+                            connectWidget={{
+                              icon: (
+                                <div className="bg-gray-200 p-3 rounded-lg flex-wrap">
+                                  <GoogleCalendarIcon />
+                                </div>
+                              ),
+                              title: "Google Calendar Access",
+                              description:
+                                "We need access to your google Calendar in order to call this tool...",
+                              action: { label: "Grant" },
+                            }}
+                          />
+                            )
+                          }
                           if (part.type === "tool-invocation") {
                             const toolInvocation = part.toolInvocation;
                             const toolCallId = toolInvocation.toolCallId;
-                            if (
-                              toolInterrupt &&
-                              TokenVaultInterrupt.isInterrupt(
-                                toolInterrupt
-                              ) &&
-                              toolInvocation.state === "call"
-                            ) {
-                              return (
-                                <TokenVaultConsentPopup
-                                  key={toolCallId}
-                                  interrupt={toolInterrupt}
-                                  auth={{ authorizePath: "/auth/login" }}
-                                  connectWidget={{
-                                    icon: (
-                                      <div className="bg-gray-200 p-3 rounded-lg flex-wrap">
-                                        <GoogleCalendarIcon />
-                                      </div>
-                                    ),
-                                    title: "Google Calendar Access",
-                                    description:
-                                      "We need access to your google Calendar in order to call this tool...",
-                                    action: { label: "Grant" },
-                                  }}
-                                />
-                              );
-                            }
-
                             const needsConfirmation =
                               toolsRequiringConfirmation.includes(
                                 toolInvocation.toolName as keyof typeof tools
@@ -257,24 +268,6 @@ export default function Chat() {
                                 addToolResult={addToolResult}
                               />
                             );
-                          }
-                          if (part?.type && part.type.startsWith('tool-') && part.toolCallId && part.state === 'output-available' || part.output !== undefined) {
-                            return (
-                              <div key={i}>
-                              <Card
-                                className={`p-3 rounded-md bg-neutral-100 dark:bg-neutral-900 ${
-                                  isUser
-                                    ? "rounded-br-none"
-                                    : "rounded-bl-none border-assistant-border"
-                                } relative`}
-                              >
-                                <MemoizedMarkdown
-                                  id={`${m.id}-${i}`}
-                                  content={part.output || ""}
-                                />
-                              </Card>
-                            </div>
-                            )    
                           }
                           return null;
                         })}
