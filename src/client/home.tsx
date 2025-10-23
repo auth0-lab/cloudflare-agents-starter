@@ -8,7 +8,6 @@ import { Layout } from "./Layout";
 import { createNewChat } from "./chats";
 
 export default function Home() {
-  console.log("Rendering Home component");
   const { user } = useUser();
   const navigate = useNavigate();
 
