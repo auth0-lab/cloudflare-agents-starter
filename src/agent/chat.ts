@@ -1,4 +1,3 @@
-import { setChatTitle } from "@/chats";
 import { openai } from "@ai-sdk/openai";
 import {
   AsyncUserConfirmationResumer,
@@ -13,13 +12,10 @@ import { AuthAgent, OwnedAgent } from "@auth0/auth0-cloudflare-agents-api";
 import { AIChatAgent } from "agents/ai-chat-agent";
 import { unstable_getSchedulePrompt } from "agents/schedule";
 import {
-  type StreamTextOnFinishCallback,
-  type ToolSet,
   convertToModelMessages,
   createUIMessageStream,
   createUIMessageStreamResponse,
   generateId,
-  generateText,
   stepCountIs,
   streamText,
 } from "ai";
@@ -51,10 +47,7 @@ export class Chat extends SuperAgent {
    * Handles incoming chat messages and manages the response stream
    * @param onFinish - Callback function executed when streaming completes
    */
-  async onChatMessage(
-    onFinish: StreamTextOnFinishCallback<ToolSet>,
-    options?: { abortSignal?: AbortSignal }
-  ) {
+  async onChatMessage() {
     // Collect all tools, including MCP tools
     const allTools = {
       ...tools,
@@ -140,34 +133,6 @@ The name of the user is ${claims?.name ?? "unknown"}.
         createdAt: new Date(),
       },
     ]);
-  }
-
-  async generateTitle(messages: Message[], newText: string): Promise<void> {
-    if (messages.length < 2) return;
-    if (messages.length > 6) return;
-    const { text: title } = await generateText({
-      model,
-      prompt: `Summarize the following conversation in a short and descriptive title,
-      like a chat topic label.
-
-      Do not include quotes or punctuation around the title
-
-      Keep it under 8 words, clear and relevant:
-
-      ${messages
-        .map((message) => `- ${message.role}: ${message.content}`)
-        .join("\n")}\n
-      - assistant: ${newText}
-      `,
-    });
-    await this.ctx.storage.put("title", title);
-
-    await setChatTitle({
-      userID: (await this.getOwner())!,
-      chatID: this.name,
-      title,
-      env: this.env,
-    });
   }
 
   get auth0AIStore() {
