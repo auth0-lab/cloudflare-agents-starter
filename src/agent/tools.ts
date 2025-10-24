@@ -10,7 +10,6 @@ import { unstable_scheduleSchema } from "agents/schedule";
 import { format, toZonedTime } from "date-fns-tz";
 import { buyStock } from "./auth0-ai-sample-tools/buy-stock";
 import { checkUsersCalendar } from "./auth0-ai-sample-tools/check-user-calendar";
-import type { Chat } from "./chat";
 
 /**
  * Weather information tool that requires human confirmation
@@ -48,7 +47,7 @@ const scheduleTask = tool({
   inputSchema: unstable_scheduleSchema,
   execute: async ({ when, description }) => {
     // we can now read the agent context from the ALS store
-    const { agent } = getCurrentAgent<Chat>();
+    const { agent } = getCurrentAgent();
 
     function throwError(msg: string): string {
       throw new Error(msg);
@@ -65,7 +64,7 @@ const scheduleTask = tool({
             ? when.cron // cron
             : throwError("not a valid schedule input");
     try {
-      agent!.schedule(input!, "executeTask", description);
+      agent!.schedule(input!, "executeTask" as keyof typeof agent, description);
     } catch (error) {
       console.error("error scheduling task", error);
       return `Error scheduling task: ${error}`;
@@ -82,7 +81,7 @@ const getScheduledTasks = tool({
   description: "List all tasks that have been scheduled",
   inputSchema: z.object({}),
   execute: async () => {
-    const { agent } = getCurrentAgent<Chat>();
+    const { agent } = getCurrentAgent();
 
     try {
       const tasks = agent!.getSchedules();
@@ -107,7 +106,7 @@ const cancelScheduledTask = tool({
     taskId: z.string().describe("The ID of the task to cancel"),
   }),
   execute: async ({ taskId }) => {
-    const { agent } = getCurrentAgent<Chat>();
+    const { agent } = getCurrentAgent();
     try {
       await agent!.cancelSchedule(taskId);
       return `Task ${taskId} has been successfully canceled.`;

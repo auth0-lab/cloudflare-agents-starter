@@ -19,6 +19,7 @@ import { TokenVaultConsentPopup } from "@/components/auth0-ai/TokenVault/popup";
 import useChatTitle from "@/hooks/useChatTitle";
 import { TokenVaultInterrupt } from "@auth0/ai/interrupts";
 import { Bug, PaperPlaneTilt, Robot, Trash } from "@phosphor-icons/react";
+import { lastAssistantMessageIsCompleteWithToolCalls } from "ai";
 import { useNavigate, useParams } from "react-router";
 import { Tooltip } from "../components/tooltip/Tooltip";
 import useUser from "../hooks/useUser";
@@ -67,6 +68,7 @@ export default function Chat() {
   const chat = useAgentChatInterruptions({
     agent,
     id: threadID,
+    sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
   });
 
   const {
@@ -84,20 +86,12 @@ export default function Chat() {
 
   const pendingToolCallConfirmation = agentMessages.some((m: UIMessage) =>
     m.parts?.some(
-      (part) =>
-        (part.type === "tool-invocation" &&
-          part.toolInvocation.state === "call" &&
-          (toolsRequiringConfirmation.includes(
-            part.toolInvocation.toolName as keyof typeof tools
-          ) ||
-            TokenVaultInterrupt.isInterrupt(toolInterrupt))) ||
-        TokenVaultInterrupt.isInterrupt(toolInterrupt)
-    )
+      () => TokenVaultInterrupt.isInterrupt(toolInterrupt)) || TokenVaultInterrupt.isInterrupt(toolInterrupt)
   );
 
   return (
     <Layout>
-      <Layout.Toolbar>
+      <Layout>
         <Tooltip content="Debug Mode" className="flex items-center gap-2 mr-2">
           <Bug size={16} />
           <Toggle
@@ -117,7 +111,7 @@ export default function Chat() {
         >
           <Trash size={20} />
         </Button>
-      </Layout.Toolbar>
+      </Layout>
       <Layout.Content>
         <HasOpenAIKey />
         <div className="flex-1 overflow-y-auto p-4 space-y-4 pb-24 max-h-[calc(100vh-10rem)]">
@@ -176,11 +170,10 @@ export default function Chat() {
 
                     <div>
                       <div>
-                        {m.parts?.map((part, i) => {
+                        {m.parts?.map((part: any, i) => {
                           if (part.type === "text") {
                             return (
-                              
-                              <div key={part.toolCallId}>
+                              <div key={`${part.text}-${i}`}>
                                 <Card
                                   className={`p-3 rounded-md bg-neutral-100 dark:bg-neutral-900 ${
                                     isUser
@@ -257,12 +250,11 @@ export default function Chat() {
                               />
                             );
                           }
-                          if (part.type === "tool-invocation") {
-                            const toolInvocation = part.toolInvocation;
-                            const toolCallId = toolInvocation.toolCallId;
+                          if (part?.type?.startsWith("tool-")) {
+                            const toolCallId = part.toolCallId;
                             const needsConfirmation =
                               toolsRequiringConfirmation.includes(
-                                toolInvocation.toolName as keyof typeof tools
+                                part.type.split('-')[1] as keyof typeof tools
                               );
 
                             // Skip rendering the card in debug mode
@@ -272,7 +264,7 @@ export default function Chat() {
                               <ToolInvocationCard
                                 // biome-ignore lint/suspicious/noArrayIndexKey: using index is safe here as the array is static
                                 key={`${toolCallId}-${i}`}
-                                toolInvocation={toolInvocation}
+                                part={part}
                                 toolCallId={toolCallId}
                                 needsConfirmation={needsConfirmation}
                                 addToolResult={addToolResult}
