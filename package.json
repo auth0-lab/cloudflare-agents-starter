@@ -47,8 +47,8 @@
     "wrangler": "^4.43.0"
   },
   "dependencies": {
-    "@ai-sdk/openai": "^2.0.53",
-    "@ai-sdk/react": "^2.0.76",
+    "@ai-sdk/openai": "2.0.24",
+    "@ai-sdk/react": "^2.0.33",
     "@ai-sdk/ui-utils": "^1.2.11",
     "@auth0/ai": "^5.0.1",
     "@auth0/ai-cloudflare": "^2.0.0",
@@ -62,7 +62,7 @@
     "@radix-ui/react-switch": "^1.2.6",
     "@types/marked": "^6.0.0",
     "agents": "^0.2.11",
-    "ai": "^5.0.0",
+    "ai": "5.0.33",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
@@ -72,7 +72,6 @@
     "hono-agents": "^2.0.4",
     "lucide-react": "^0.508.0",
     "marked": "^15.0.11",
-    "partyserver": "^0.0.75",
     "react": "^19.1.0",
     "react-device-detect": "^2.2.3",
     "react-dom": "^19.2.0",
