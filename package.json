@@ -72,6 +72,7 @@
     "hono-agents": "^2.0.4",
     "lucide-react": "^0.508.0",
     "marked": "^15.0.11",
+    "partyserver": "^0.0.75",
     "react": "^19.1.0",
     "react-device-detect": "^2.2.3",
     "react-dom": "^19.2.0",

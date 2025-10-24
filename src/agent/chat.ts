@@ -129,8 +129,9 @@ The name of the user is ${claims?.name ?? "unknown"}.
       {
         id: generateId(),
         role: "user",
-        content: `Running scheduled task: ${description}`,
-        createdAt: new Date(),
+        parts: [
+          { type: "text", text: `Running scheduled task: ${description}` },
+        ],
       },
     ]);
   }

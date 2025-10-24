@@ -18,13 +18,13 @@ setGlobalAIContext(() => ({ threadID: getAgent().name }));
 
 const auth0AI = new Auth0AI({
   store: () => {
-    return getAgent().auth0AIStore;
+    return (getAgent() as any).auth0AIStore;
   },
 });
 
 export const withGoogleCalendar = auth0AI.withTokenVault({
   refreshToken: async () => {
-    const credentials = getAgent().getCredentials();
+    const credentials = (getAgent() as any).getCredentials();
     return credentials?.refresh_token;
   },
   connection: "google-oauth2",
@@ -33,7 +33,7 @@ export const withGoogleCalendar = auth0AI.withTokenVault({
 
 export const withAsyncAuthorization = auth0AI.withAsyncAuthorization({
   userID: async () => {
-    const owner = await getAgent().getOwner();
+    const owner = await (getAgent() as any).getOwner();
     if (!owner) {
       throw new Error("No owner found");
     }
@@ -53,7 +53,10 @@ export const withAsyncAuthorization = auth0AI.withAsyncAuthorization({
     interrupt: AuthorizationPendingInterrupt | AuthorizationPollingInterrupt,
     context
   ) => {
-    await getAgent().scheduleAsyncUserConfirmationCheck({ interrupt, context });
+    await (getAgent() as any).scheduleAsyncUserConfirmationCheck({
+      interrupt,
+      context,
+    });
   },
   onUnauthorized: async (e: Error) => {
     if (e instanceof AccessDeniedInterrupt) {
