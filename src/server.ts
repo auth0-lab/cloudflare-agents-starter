@@ -20,7 +20,7 @@ app.use(
     domain: process.env.AUTH0_DOMAIN!,
     clientID: process.env.AUTH0_CLIENT_ID!,
     clientSecret: process.env.AUTH0_CLIENT_SECRET!,
-    baseURL: process.env.BASE_URL || 'http://localhost:3000',
+    baseURL: process.env.BASE_URL || "http://localhost:3000",
     session: {
       secret: process.env.AUTH0_SESSION_SECRET!,
     },
