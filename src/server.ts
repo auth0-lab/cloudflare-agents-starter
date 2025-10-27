@@ -17,6 +17,13 @@ app.use(logger());
 
 app.use(
   auth({
+    domain: process.env.AUTH0_DOMAIN!,
+    clientID: process.env.AUTH0_CLIENT_ID!,
+    clientSecret: process.env.AUTH0_CLIENT_SECRET!,
+    baseURL: process.env.BASE_URL || 'http://localhost:3000',
+    session: {
+      secret: process.env.AUTH0_SESSION_SECRET!,
+    },
     authRequired: false,
     idpLogout: true,
     forwardAuthorizationParams: [
@@ -30,12 +37,16 @@ app.use(
 );
 
 app.get("/user", async (c): Promise<Response> => {
-  // const session = c.get("session");
-  const session = await c.var.auth0Client?.getSession(c);
-  if (!session?.user) {
-    return c.json({ error: "User not authenticated" }, 401);
+  try {
+    const session = await c.var.auth0Client?.getSession(c);
+    if (!session?.user) {
+      return c.json({ error: "User not authenticated" }, 401);
+    }
+    return c.json(session.user);
+  } catch (err) {
+    console.error("GET /user failed:", err);
+    return c.json({ error: "Internal Server Error" }, 500);
   }
-  return c.json(session.user);
 });
 
 app.get("/check-open-ai-key", async (c) => {
