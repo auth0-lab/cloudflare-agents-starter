@@ -11,7 +11,6 @@ import {
 } from "@auth0/ai-vercel/interrupts";
 import { AuthAgent, OwnedAgent } from "@auth0/auth0-cloudflare-agents-api";
 import { AIChatAgent } from "agents/ai-chat-agent";
-import { unstable_getSchedulePrompt } from "agents/schedule";
 import {
   convertToModelMessages,
   createUIMessageStream,
@@ -21,104 +20,84 @@ import {
   streamText,
   type UIMessage,
 } from "ai";
-import { extend } from "flumix";
 import { executions, tools } from "./tools";
 import { processToolCalls } from "./utils";
 
 const model = openai("gpt-4o-2024-11-20");
 
-const SuperAgent = extend(AIChatAgent<Env>)
-  // Authenticate requests and connections using
-  // JSON Web Token (JWT) Profile for OAuth 2.0 Access Tokens.
-  .with(AuthAgent)
-  // Every durable object has an owner set during creation.
-  // Other uses will be rejected.
-  .with(OwnedAgent)
-  // Take advantage of Agent scheduling capabilities
-  // to handle async user confirmation polling.
-  .with(AsyncUserConfirmationResumer)
-  // Builds the agent with all mixins applied.
-  .build();
+class BaseChat extends AIChatAgent<Env> {}
 
-/**
- * Chat Agent implementation that handles real-time AI chat interactions
- */
+const AuthedChat = AuthAgent(BaseChat);
+const OwnedAuthedChat = OwnedAgent(AuthedChat);
+const ResumableOwnedAuthedChat = AsyncUserConfirmationResumer(OwnedAuthedChat);
 
-export class Chat extends SuperAgent {
+export class Chat extends ResumableOwnedAuthedChat {
   messages: UIMessage[] = [];
-  /**
-   * Handles incoming chat messages and manages the response stream
-   * @param onFinish - Callback function executed when streaming completes
-   */
+
+  declare mcp?:
+    | {
+    unstable_getAITools?: () => Record<string, unknown>;
+  }
+    | undefined;
+
   async onChatMessage() {
-    // Collect all tools, including MCP tools
     const allTools = {
       ...tools,
-      ...this.mcp.unstable_getAITools(),
+      ...(this.mcp?.unstable_getAITools?.() ?? {}),
     };
-    const claims = this.getClaims();
-    // Create a streaming response that handles both text and tool outputs
+
+    const claims = this.getClaims?.();
+
     const stream = createUIMessageStream({
       originalMessages: this.messages,
       execute: withInterruptions(
         async ({ writer }) => {
-          // Invoke Auth0 interrupted tools
           await invokeTools({
             messages: convertToModelMessages(this.messages),
             tools: allTools,
           });
 
-          // Process any pending tool calls from previous messages
-          // This handles human-in-the-loop confirmations for tools
-          const processedMessages = await processToolCalls({
+          const processed = await processToolCalls({
             messages: this.messages,
             dataStream: writer,
             tools: allTools,
             executions,
           });
 
-          // Stream the AI response using GPT-4
           const result = streamText({
             model,
             stopWhen: stepCountIs(10),
-            messages: convertToModelMessages(processedMessages),
+            messages: convertToModelMessages(processed),
             system: `You are a helpful assistant that can do various tasks...
-
-${unstable_getSchedulePrompt({ date: new Date() })}
 
 If the user asks to schedule a task, use the schedule tool to schedule the task.
 
-The name of the user is ${claims?.name ?? "unknown"}.
-`,
+The name of the user is ${claims?.name ?? "unknown"}.`,
             tools: allTools,
             onStepFinish: (output) => {
               if (output.finishReason === "tool-calls") {
-                const lastMessage = output.content[output.content.length - 1];
-                if (lastMessage?.type === "tool-error") {
-                  const { toolName, toolCallId, error, input } = lastMessage;
+                const last = output.content[output.content.length - 1];
+                if (last?.type === "tool-error") {
+                  const { toolName, toolCallId, error, input } = last;
                   const serializableError = {
                     cause: error,
-                    toolCallId: toolCallId,
-                    toolName: toolName,
+                    toolCallId,
+                    toolName,
                     toolArgs: input,
                   };
-
                   throw serializableError;
                 }
               }
             },
           });
-          // Merge the AI response stream with tool execution outputs
+
           writer.merge(
             result.toUIMessageStream({
               sendReasoning: true,
             })
           );
         },
-        {
-          messages: this.messages,
-          tools: allTools,
-        }
+        { messages: this.messages, tools: allTools }
       ),
       onError: errorSerializer(),
     });
@@ -132,14 +111,12 @@ The name of the user is ${claims?.name ?? "unknown"}.
       {
         id: generateId(),
         role: "user",
-        parts: [
-          { type: "text", text: `Running scheduled task: ${description}` },
-        ],
+        parts: [{ type: "text", text: `Running scheduled task: ${description}` }],
       },
     ]);
   }
 
   get auth0AIStore() {
-    return new CloudflareKVStore({ kv: this.env.Session });
+    return new CloudflareKVStore({ kv: (this as any).env.Session });
   }
 }
