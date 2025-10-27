@@ -1,4 +1,5 @@
 import { generateId } from "ai";
+import type { ChatInstance } from "./agent/chat";
 
 /**
  * This file contains the logic for creating and listing chats.
@@ -19,8 +20,7 @@ export const createNewChat = async ({
 }): Promise<string> => {
   const id = generateId();
   const chatID = env.Chat.idFromName(id);
-  const stub = env.Chat.get(chatID);
-  // @ts-expect-error setOwner is not typed
+  const stub = env.Chat.get(chatID) as ChatInstance;
   await stub.setOwner(userID);
   //insert the chat into the list
   await env.ChatList.put(

@@ -5,9 +5,10 @@ import {
   type AuthorizationPollingInterrupt,
 } from "@auth0/ai/interrupts";
 import { getCurrentAgent } from "agents";
+import type { ChatInstance } from "./chat";
 
 const getAgent = () => {
-  const { agent } = getCurrentAgent();
+  const { agent } = getCurrentAgent<ChatInstance>();
   if (!agent) {
     throw new Error("No agent found");
   }
@@ -18,13 +19,13 @@ setGlobalAIContext(() => ({ threadID: getAgent().name }));
 
 const auth0AI = new Auth0AI({
   store: () => {
-    return (getAgent() as any).auth0AIStore;
+    return getAgent().auth0AIStore;
   },
 });
 
 export const withGoogleCalendar = auth0AI.withTokenVault({
   refreshToken: async () => {
-    const credentials = (getAgent() as any).getCredentials();
+    const credentials = getAgent().getCredentials();
     return credentials?.refresh_token;
   },
   connection: "google-oauth2",
@@ -33,13 +34,12 @@ export const withGoogleCalendar = auth0AI.withTokenVault({
 
 export const withAsyncAuthorization = auth0AI.withAsyncAuthorization({
   userID: async () => {
-    const owner = await (getAgent() as any).getOwner();
+    const owner = await getAgent().getOwner();
     if (!owner) {
       throw new Error("No owner found");
     }
     return owner;
   },
-  // onAuthorizationRequest: "block",
   onAuthorizationRequest: async (creds) => {
     console.log(
       `An authorization request was sent to your mobile device or your email.`
@@ -53,7 +53,7 @@ export const withAsyncAuthorization = auth0AI.withAsyncAuthorization({
     interrupt: AuthorizationPendingInterrupt | AuthorizationPollingInterrupt,
     context
   ) => {
-    await (getAgent() as any).scheduleAsyncUserConfirmationCheck({
+    await getAgent().scheduleAsyncUserConfirmationCheck({
       interrupt,
       context,
     });
