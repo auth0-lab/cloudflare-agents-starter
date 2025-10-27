@@ -84,9 +84,10 @@ export default function Chat() {
     agentMessages.length > 0 && scrollToBottom();
   }, [agentMessages, scrollToBottom]);
 
-  const pendingToolCallConfirmation = agentMessages.some((m: UIMessage) =>
-    m.parts?.some(
-      () => TokenVaultInterrupt.isInterrupt(toolInterrupt)) || TokenVaultInterrupt.isInterrupt(toolInterrupt)
+  const pendingToolCallConfirmation = agentMessages.some(
+    (m: UIMessage) =>
+      m.parts?.some(() => TokenVaultInterrupt.isInterrupt(toolInterrupt)) ||
+      TokenVaultInterrupt.isInterrupt(toolInterrupt)
   );
 
   return (
@@ -254,7 +255,7 @@ export default function Chat() {
                             const toolCallId = part.toolCallId;
                             const needsConfirmation =
                               toolsRequiringConfirmation.includes(
-                                part.type.split('-')[1] as keyof typeof tools
+                                part.type.split("-")[1] as keyof typeof tools
                               );
 
                             // Skip rendering the card in debug mode

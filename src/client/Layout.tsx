@@ -120,8 +120,8 @@ export function Layout({ children }: { children: ReactNode }) {
               </UserButton>
             )}
           </div>
-            {/* Extra toolbar elements */}
-            {contentElements.length > 0 && contentElements}
+          {/* Extra toolbar elements */}
+          {contentElements.length > 0 && contentElements}
         </div>
       </div>
     </div>

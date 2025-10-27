@@ -15,7 +15,7 @@ export function ToolInvocationCard({
   toolCallId,
   needsConfirmation,
   addToolResult,
-  part
+  part,
 }: ToolInvocationCardProps) {
   const [isExpanded, setIsExpanded] = useState(true);
 
@@ -36,7 +36,7 @@ export function ToolInvocationCard({
           <Robot size={16} className="text-[#F48120]" />
         </div>
         <h4 className="font-medium flex items-center gap-2 flex-1 text-left">
-          {part.type.split('-')[1]}
+          {part.type.split("-")[1]}
           {!needsConfirmation && part.state === "output-available" && (
             <span className="text-xs text-[#F48120]/70">✓ Completed</span>
           )}

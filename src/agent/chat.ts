@@ -18,6 +18,7 @@ import {
   generateId,
   stepCountIs,
   streamText,
+  type UIMessage,
 } from "ai";
 import { extend } from "flumix";
 import { executions, tools } from "./tools";
@@ -43,6 +44,7 @@ const SuperAgent = extend(AIChatAgent<Env>)
  */
 
 export class Chat extends SuperAgent {
+  messages: UIMessage[] = [];
   /**
    * Handles incoming chat messages and manages the response stream
    * @param onFinish - Callback function executed when streaming completes
