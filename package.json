@@ -31,16 +31,16 @@
     }
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.2.6",
+    "@biomejs/biome": "^2.3.1",
     "@cloudflare/vite-plugin": "1.13.13",
     "@cloudflare/vitest-pool-workers": "^0.9.13",
-    "@tailwindcss/vite": "^4.1.14",
+    "@tailwindcss/vite": "^4.1.5",
     "@types/node": "^24.8.1",
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.2",
     "@vitejs/plugin-react": "^5.0.4",
     "prettier": "^3.6.2",
-    "tailwindcss": "^4.1.14",
+    "tailwindcss": "^4.1.5",
     "typescript": "^5.9.3",
     "vite": "^7.1.11",
     "vitest": "3.2.4",
@@ -79,7 +79,7 @@
     "react-router": "^7.9.4",
     "remark-gfm": "^4.0.1",
     "swr": "^2.3.6",
-    "tailwind-merge": "^3.3.1",
+    "tailwind-merge": "^3.2.0",
     "zod": "^3.25.76"
   }
 }
