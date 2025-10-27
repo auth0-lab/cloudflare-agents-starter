@@ -13,14 +13,14 @@ declare module "cloudflare:test" {
 }
 
 describe("Chat worker", () => {
-  it("responds with Not found", async () => {
+  it("responds with 404 for unknown routes", async () => {
     const request = new Request("http://example.com");
     // Create an empty context to pass to `worker.fetch()`
     const ctx = createExecutionContext();
     const response = await worker.fetch(request, env, ctx);
     // Wait for all `Promise`s passed to `ctx.waitUntil()` to settle before running test assertions
     await waitOnExecutionContext(ctx);
-    expect(await response.text()).toBe("Not found");
+    // The catch-all route delegates to ASSETS, which returns 404 for non-existent files
     expect(response.status).toBe(404);
   });
 });

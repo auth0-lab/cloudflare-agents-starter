@@ -2,12 +2,13 @@ import { APPROVAL } from "@/agent/shared";
 import { Button } from "@/components/button/Button";
 import { Card } from "@/components/card/Card";
 import { Tooltip } from "@/components/tooltip/Tooltip";
+import type { useAgentChatInterruptions } from "@auth0/ai-cloudflare/react";
 import { CaretDown, Robot } from "@phosphor-icons/react";
 import { useState } from "react";
 interface ToolInvocationCardProps {
   toolCallId: string;
   needsConfirmation: boolean;
-  addToolResult: (args: any) => void;
+  addToolResult: ReturnType<typeof useAgentChatInterruptions>["addToolResult"];
   part: any;
 }
 
@@ -70,6 +71,7 @@ export function ToolInvocationCard({
                 size="sm"
                 onClick={() =>
                   addToolResult({
+                    tool: part.type.split("-")[1],
                     toolCallId,
                     output: APPROVAL.NO,
                   })
@@ -83,6 +85,7 @@ export function ToolInvocationCard({
                   size="sm"
                   onClick={() =>
                     addToolResult({
+                      tool: part.type.split("-")[1],
                       toolCallId,
                       output: APPROVAL.YES,
                     })

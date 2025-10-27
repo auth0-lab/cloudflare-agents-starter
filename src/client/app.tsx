@@ -19,7 +19,6 @@ import { TokenVaultConsentPopup } from "@/components/auth0-ai/TokenVault/popup";
 import useChatTitle from "@/hooks/useChatTitle";
 import { TokenVaultInterrupt } from "@auth0/ai/interrupts";
 import { Bug, PaperPlaneTilt, Robot, Trash } from "@phosphor-icons/react";
-import { lastAssistantMessageIsCompleteWithToolCalls } from "ai";
 import { useNavigate, useParams } from "react-router";
 import { Tooltip } from "../components/tooltip/Tooltip";
 import useUser from "../hooks/useUser";
@@ -68,7 +67,6 @@ export default function Chat() {
   const chat = useAgentChatInterruptions({
     agent,
     id: threadID,
-    sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
   });
 
   const {

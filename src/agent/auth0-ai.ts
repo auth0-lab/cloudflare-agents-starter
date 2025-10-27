@@ -5,6 +5,7 @@ import {
   type AuthorizationPollingInterrupt,
 } from "@auth0/ai/interrupts";
 import { getCurrentAgent } from "agents";
+import type { ChatInstance } from "./chat";
 
 setGlobalAIContext(() => ({ threadID: getAgent().name }));
 
@@ -15,7 +16,7 @@ const auth0AI = new Auth0AI({
 });
 
 const getAgent = () => {
-  const { agent } = getCurrentAgent();
+  const { agent } = getCurrentAgent<ChatInstance>();
   if (!agent) {
     throw new Error("No agent found");
   }
@@ -47,7 +48,7 @@ export const withGitHub = auth0AI.withTokenVault({
 
 export const withAsyncAuthorization = auth0AI.withAsyncAuthorization({
   userID: async () => {
-    const owner = await (getAgent() as any).getOwner();
+    const owner = await getAgent().getOwner();
     if (!owner) {
       throw new Error("No owner found");
     }
@@ -67,7 +68,7 @@ export const withAsyncAuthorization = auth0AI.withAsyncAuthorization({
     interrupt: AuthorizationPendingInterrupt | AuthorizationPollingInterrupt,
     context
   ) => {
-    await (getAgent() as any).scheduleAsyncUserConfirmationCheck({
+    await getAgent().scheduleAsyncUserConfirmationCheck({
       interrupt,
       context,
     });
