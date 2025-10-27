@@ -36,8 +36,8 @@ export class Chat extends ResumableOwnedAuthedChat {
 
   declare mcp?:
     | {
-    unstable_getAITools?: () => Record<string, unknown>;
-  }
+        unstable_getAITools?: () => Record<string, unknown>;
+      }
     | undefined;
 
   async onChatMessage() {
@@ -111,7 +111,9 @@ The name of the user is ${claims?.name ?? "unknown"}.`,
       {
         id: generateId(),
         role: "user",
-        parts: [{ type: "text", text: `Running scheduled task: ${description}` }],
+        parts: [
+          { type: "text", text: `Running scheduled task: ${description}` },
+        ],
       },
     ]);
   }
