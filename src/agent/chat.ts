@@ -177,10 +177,13 @@ The name of the user is ${claims?.name ?? "unknown"}.`,
   }
 }
 
+// Augment the Chat type to include mixin method
+export type ChatInstance = BaseChat & MixinMethods & AIChatAgent<Env>;
+
 // Apply mixins in the correct order
 const AuthedChat = AuthAgent(BaseChat as any);
 const OwnedAuthedChat = OwnedAgent(AuthedChat);
 export const Chat = AsyncUserConfirmationResumer(OwnedAuthedChat);
 
-// Augment the Chat type to include mixin method
-export type ChatInstance = BaseChat & MixinMethods & AIChatAgent<Env>;
+// Export the instance type
+export type Chat = ChatInstance;
