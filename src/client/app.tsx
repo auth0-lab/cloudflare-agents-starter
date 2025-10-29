@@ -84,8 +84,16 @@ export default function Chat() {
 
   const pendingToolCallConfirmation = agentMessages.some(
     (m: UIMessage) =>
-      m.parts?.some(() => TokenVaultInterrupt.isInterrupt(toolInterrupt)) ||
-      TokenVaultInterrupt.isInterrupt(toolInterrupt)
+      m.parts?.some(
+        (part) =>
+          (part?.type?.startsWith("tool-") &&
+            toolsRequiringConfirmation.includes(
+              part.type?.split("-")[1] as keyof typeof tools
+            ) &&
+            "state" in part &&
+            part?.state === "input-available") ||
+          TokenVaultInterrupt.isInterrupt(toolInterrupt)
+      ) || TokenVaultInterrupt.isInterrupt(toolInterrupt)
   );
 
   return (
@@ -147,7 +155,7 @@ export default function Chat() {
               index === 0 || agentMessages[index - 1]?.role !== m.role;
 
             return (
-              <div key={m.id}>
+              <div key={`${m.id}-${index}`}>
                 {showDebug && (
                   <pre className="text-xs text-muted-foreground overflow-scroll">
                     {JSON.stringify(m, null, 2)}
