@@ -1,5 +1,5 @@
-import { getAccessTokenForConnection } from "@auth0/ai-vercel";
-import { FederatedConnectionError } from "@auth0/ai/interrupts";
+import { getAccessTokenFromTokenVault } from "@auth0/ai-vercel";
+import { TokenVaultError } from "@auth0/ai/interrupts";
 import { tool } from "ai";
 import { addHours } from "date-fns";
 import { z } from "zod";
@@ -9,12 +9,12 @@ export const checkUsersCalendar = withGoogleCalendar(
   tool({
     description:
       "Check user availability on a given date time on their calendar",
-    parameters: z.object({
+    inputSchema: z.object({
       date: z.coerce.date(),
     }),
     execute: async ({ date }) => {
       // Get the access token from Auth0 AI
-      const accessToken = getAccessTokenForConnection();
+      const accessToken = getAccessTokenFromTokenVault();
       const url = "https://www.googleapis.com/calendar/v3/freeBusy";
       const body = JSON.stringify({
         timeMin: date,
@@ -34,7 +34,7 @@ export const checkUsersCalendar = withGoogleCalendar(
 
       if (!response.ok) {
         if (response.status === 401) {
-          throw new FederatedConnectionError(
+          throw new TokenVaultError(
             "Authorization required to access the Federated Connection"
           );
         }

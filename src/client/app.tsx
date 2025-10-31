@@ -1,4 +1,4 @@
-import type { Message } from "@ai-sdk/react";
+import type { UIMessage } from "@ai-sdk/react";
 import { useAgentChatInterruptions } from "@auth0/ai-cloudflare/react";
 import { useAgent } from "agents/react";
 import { use, useCallback, useEffect, useRef, useState } from "react";
@@ -14,10 +14,10 @@ import { Toggle } from "@/components/toggle/Toggle";
 import { ToolInvocationCard } from "@/components/tool-invocation-card/ToolInvocationCard";
 
 // Icon imports
-import { GoogleCalendarIcon } from "@/components/auth0-ai/FederatedConnections/icons";
-import { EnsureAPIAccessPopup } from "@/components/auth0-ai/FederatedConnections/popup";
+import { GoogleCalendarIcon } from "@/components/auth0-ai/TokenVault/icons";
+import { TokenVaultConsentPopup } from "@/components/auth0-ai/TokenVault/popup";
 import useChatTitle from "@/hooks/useChatTitle";
-import { FederatedConnectionInterrupt } from "@auth0/ai/interrupts";
+import { TokenVaultInterrupt } from "@auth0/ai/interrupts";
 import { Bug, PaperPlaneTilt, Robot, Trash } from "@phosphor-icons/react";
 import { useNavigate, useParams } from "react-router";
 import { Tooltip } from "../components/tooltip/Tooltip";
@@ -36,6 +36,7 @@ export default function Chat() {
 
   const [showDebug, setShowDebug] = useState(false);
   const [textareaHeight, setTextareaHeight] = useState("auto");
+  const [input, setInput] = useState<string>("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = useCallback(() => {
@@ -63,44 +64,41 @@ export default function Chat() {
     name: threadID ?? undefined,
   });
 
+  const chat = useAgentChatInterruptions({
+    agent,
+    id: threadID,
+  });
+
   const {
     messages: agentMessages,
-    input: agentInput,
-    handleInputChange: handleAgentInputChange,
-    handleSubmit: handleAgentSubmit,
+    sendMessage: handleAgentSubmit,
     addToolResult,
     clearHistory,
     toolInterrupt,
-  } = useAgentChatInterruptions({
-    agent,
-    maxSteps: 5,
-    id: threadID,
-  });
+  } = chat;
 
   // Scroll to bottom when messages change
   useEffect(() => {
     agentMessages.length > 0 && scrollToBottom();
   }, [agentMessages, scrollToBottom]);
 
-  const pendingToolCallConfirmation = agentMessages.some((m: Message) =>
-    m.parts?.some(
-      (part) =>
-        part.type === "tool-invocation" &&
-        part.toolInvocation.state === "call" &&
-        (toolsRequiringConfirmation.includes(
-          part.toolInvocation.toolName as keyof typeof tools
-        ) ||
-          FederatedConnectionInterrupt.isInterrupt(toolInterrupt))
-    )
+  const pendingToolCallConfirmation = agentMessages.some(
+    (m: UIMessage) =>
+      m.parts?.some(
+        (part) =>
+          (part?.type?.startsWith("tool-") &&
+            toolsRequiringConfirmation.includes(
+              part.type?.split("-")[1] as keyof typeof tools
+            ) &&
+            "state" in part &&
+            part?.state === "input-available") ||
+          TokenVaultInterrupt.isInterrupt(toolInterrupt)
+      ) || TokenVaultInterrupt.isInterrupt(toolInterrupt)
   );
-
-  const formatTime = (date: Date) => {
-    return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-  };
 
   return (
     <Layout>
-      <Layout.Toolbar>
+      <Layout>
         <Tooltip content="Debug Mode" className="flex items-center gap-2 mr-2">
           <Bug size={16} />
           <Toggle
@@ -120,7 +118,7 @@ export default function Chat() {
         >
           <Trash size={20} />
         </Button>
-      </Layout.Toolbar>
+      </Layout>
       <Layout.Content>
         <HasOpenAIKey />
         <div className="flex-1 overflow-y-auto p-4 space-y-4 pb-24 max-h-[calc(100vh-10rem)]">
@@ -151,13 +149,13 @@ export default function Chat() {
             </div>
           )}
 
-          {agentMessages.map((m: Message, index) => {
+          {agentMessages.map((m: UIMessage, index) => {
             const isUser = m.role === "user";
             const showAvatar =
               index === 0 || agentMessages[index - 1]?.role !== m.role;
 
             return (
-              <div key={m.id}>
+              <div key={`${m.id}-${index}`}>
                 {showDebug && (
                   <pre className="text-xs text-muted-foreground overflow-scroll">
                     {JSON.stringify(m, null, 2)}
@@ -179,11 +177,10 @@ export default function Chat() {
 
                     <div>
                       <div>
-                        {m.parts?.map((part, i) => {
+                        {m.parts?.map((part: any, i) => {
                           if (part.type === "text") {
                             return (
-                              // biome-ignore lint/suspicious/noArrayIndexKey: immutable index
-                              <div key={i}>
+                              <div key={`${part.text}-${i}`}>
                                 <Card
                                   className={`p-3 rounded-md bg-neutral-100 dark:bg-neutral-900 ${
                                     isUser
@@ -210,52 +207,61 @@ export default function Chat() {
                                     )}
                                   />
                                 </Card>
-                                <p
-                                  className={`text-xs text-muted-foreground mt-1 ${
-                                    isUser ? "text-right" : "text-left"
-                                  }`}
-                                >
-                                  {formatTime(
-                                    new Date(m.createdAt as unknown as string)
-                                  )}
-                                </p>
                               </div>
                             );
                           }
-
-                          if (part.type === "tool-invocation") {
-                            const toolInvocation = part.toolInvocation;
-                            const toolCallId = toolInvocation.toolCallId;
-                            if (
-                              toolInterrupt &&
-                              FederatedConnectionInterrupt.isInterrupt(
-                                toolInterrupt
-                              ) &&
-                              toolInvocation.state === "call"
-                            ) {
-                              return (
-                                <EnsureAPIAccessPopup
-                                  key={toolCallId}
-                                  interrupt={toolInterrupt}
-                                  auth={{ authorizePath: "/auth/login" }}
-                                  connectWidget={{
-                                    icon: (
-                                      <div className="bg-gray-200 p-3 rounded-lg flex-wrap">
-                                        <GoogleCalendarIcon />
-                                      </div>
-                                    ),
-                                    title: "Google Calendar Access",
-                                    description:
-                                      "We need access to your google Calendar in order to call this tool...",
-                                    action: { label: "Grant" },
-                                  }}
-                                />
-                              );
-                            }
-
+                          if (
+                            part?.type?.startsWith("tool-") &&
+                            part.toolCallId &&
+                            part.state === "output-available" &&
+                            typeof part.output === "string"
+                          ) {
+                            return (
+                              <div key={part.toolCallId}>
+                                <Card
+                                  className={`p-3 rounded-md bg-neutral-100 dark:bg-neutral-900 ${
+                                    isUser
+                                      ? "rounded-br-none"
+                                      : "rounded-bl-none border-assistant-border"
+                                  } relative`}
+                                >
+                                  <MemoizedMarkdown
+                                    id={`${m.id}-${i}`}
+                                    content={part.output || ""}
+                                  />
+                                </Card>
+                              </div>
+                            );
+                          }
+                          if (
+                            part?.type?.startsWith("tool-") &&
+                            toolInterrupt &&
+                            TokenVaultInterrupt.isInterrupt(toolInterrupt)
+                          ) {
+                            return (
+                              <TokenVaultConsentPopup
+                                key={toolInterrupt?.toolCall?.id}
+                                interrupt={toolInterrupt}
+                                auth={{ authorizePath: "/auth/login" }}
+                                connectWidget={{
+                                  icon: (
+                                    <div className="bg-gray-200 p-3 rounded-lg flex-wrap">
+                                      <GoogleCalendarIcon />
+                                    </div>
+                                  ),
+                                  title: "Google Calendar Access",
+                                  description:
+                                    "We need access to your google Calendar in order to call this tool...",
+                                  action: { label: "Grant" },
+                                }}
+                              />
+                            );
+                          }
+                          if (part?.type?.startsWith("tool-")) {
+                            const toolCallId = part.toolCallId;
                             const needsConfirmation =
                               toolsRequiringConfirmation.includes(
-                                toolInvocation.toolName as keyof typeof tools
+                                part.type.split("-")[1] as keyof typeof tools
                               );
 
                             // Skip rendering the card in debug mode
@@ -265,7 +271,7 @@ export default function Chat() {
                               <ToolInvocationCard
                                 // biome-ignore lint/suspicious/noArrayIndexKey: using index is safe here as the array is static
                                 key={`${toolCallId}-${i}`}
-                                toolInvocation={toolInvocation}
+                                part={part}
                                 toolCallId={toolCallId}
                                 needsConfirmation={needsConfirmation}
                                 addToolResult={addToolResult}
@@ -287,13 +293,11 @@ export default function Chat() {
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            handleAgentSubmit(e, {
-              data: {
-                annotations: {
-                  hello: "world",
-                },
-              },
+            handleAgentSubmit({
+              parts: [{ type: "text", text: input }],
+              role: "user",
             });
+            setInput("");
             setTextareaHeight("auto"); // Reset height after submission
           }}
           className="p-3 bg-neutral-50 absolute bottom-0 left-0 right-0 z-10 border-t border-neutral-300 dark:border-neutral-800 dark:bg-neutral-900"
@@ -308,9 +312,9 @@ export default function Chat() {
                     : "Send a message..."
                 }
                 className="flex w-full border border-neutral-200 dark:border-neutral-700 px-3 py-2 ring-offset-background placeholder:text-neutral-500 dark:placeholder:text-neutral-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-300 dark:focus-visible:ring-neutral-700 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-neutral-900 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm min-h-[24px] max-h-[calc(75dvh)] overflow-hidden resize-none rounded-2xl !text-base pb-10 dark:bg-neutral-900"
-                value={agentInput}
+                value={input}
                 onChange={(e) => {
-                  handleAgentInputChange(e);
+                  setInput(e.target.value);
                   // Auto-resize the textarea
                   e.target.style.height = "auto";
                   e.target.style.height = `${e.target.scrollHeight}px`;
@@ -323,8 +327,12 @@ export default function Chat() {
                     !e.nativeEvent.isComposing
                   ) {
                     e.preventDefault();
-                    handleAgentSubmit(e as unknown as React.FormEvent);
-                    setTextareaHeight("auto"); // Reset height on Enter submission
+                    handleAgentSubmit({
+                      parts: [{ type: "text", text: input }],
+                      role: "user",
+                    });
+                    setInput("");
+                    setTextareaHeight("auto"); // Reset height after submission
                   }
                 }}
                 rows={2}
@@ -334,7 +342,7 @@ export default function Chat() {
                 <button
                   type="submit"
                   className="inline-flex items-center cursor-pointer justify-center gap-2 whitespace-nowrap text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 rounded-full p-1.5 h-fit border border-neutral-200 dark:border-neutral-800"
-                  disabled={pendingToolCallConfirmation || !agentInput.trim()}
+                  disabled={pendingToolCallConfirmation || !input.trim()}
                 >
                   <PaperPlaneTilt size={16} />
                 </button>

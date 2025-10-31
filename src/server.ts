@@ -17,6 +17,17 @@ app.use(logger());
 
 app.use(
   auth({
+    domain: process.env.AUTH0_DOMAIN,
+    clientID: process.env.AUTH0_CLIENT_ID,
+    clientSecret: process.env.AUTH0_CLIENT_SECRET,
+    baseURL: process.env.BASE_URL || "http://localhost:3000",
+    authorizationParams: {
+      audience: process.env.AUTH0_AUDIENCE,
+      scope: "openid profile email",
+    },
+    session: {
+      secret: process.env.AUTH0_SESSION_ENCRYPTION_KEY,
+    },
     authRequired: false,
     idpLogout: true,
     forwardAuthorizationParams: [
@@ -30,12 +41,16 @@ app.use(
 );
 
 app.get("/user", async (c): Promise<Response> => {
-  // const session = c.get("session");
-  const session = await c.var.auth0Client?.getSession(c);
-  if (!session?.user) {
-    return c.json({ error: "User not authenticated" }, 401);
+  try {
+    const session = await c.var.auth0Client?.getSession(c);
+    if (!session?.user) {
+      return c.json({ error: "User not authenticated" }, 401);
+    }
+    return c.json(session.user);
+  } catch (err) {
+    console.error("GET /user failed:", err);
+    return c.json({ error: "Internal Server Error" }, 500);
   }
-  return c.json(session.user);
 });
 
 app.get("/check-open-ai-key", async (c) => {
@@ -135,15 +150,15 @@ app.use("/agents/*", requiresAuth("error"), async (c, next) => {
       async onBeforeRequest(req) {
         return addToken(req);
       },
-      async onBeforeConnect(req, lobby) {
+      async onBeforeConnect(req) {
         return addToken(req);
       },
     },
-    // @ts-ignore
+    // @ts-expect-error
   })(c, next);
 });
 
-app.use("*", async (c, next) => {
+app.use("*", async (c) => {
   const res = await c.env.ASSETS.fetch(c.req.raw);
   return new Response(res.body, res);
 });
