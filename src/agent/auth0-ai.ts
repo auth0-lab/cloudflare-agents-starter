@@ -23,14 +23,6 @@ const auth0AI = new Auth0AI({
   },
 });
 
-const getAgent = () => {
-  const { agent } = getCurrentAgent<ChatInstance>();
-  if (!agent) {
-    throw new Error("No agent found");
-  }
-  return agent;
-};
-
 const refreshToken = async () => {
   const credentials = getAgent().getCredentials();
   return credentials?.refresh_token;
