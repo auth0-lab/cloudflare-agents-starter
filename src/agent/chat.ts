@@ -1,14 +1,10 @@
 import { openai } from "@ai-sdk/openai";
-import {
-  AsyncUserConfirmationResumer,
-  CloudflareKVStore,
-} from "@auth0/ai-cloudflare";
+import { CloudflareKVStore } from "@auth0/ai-cloudflare";
 import {
   errorSerializer,
   invokeTools,
   withInterruptions,
 } from "@auth0/ai-vercel/interrupts";
-import { AuthAgent, OwnedAgent } from "@auth0/auth0-cloudflare-agents-api";
 import { AIChatAgent } from "agents/ai-chat-agent";
 import {
   convertToModelMessages,
@@ -23,19 +19,15 @@ import { extend } from "flumix";
 import { executions, tools } from "./tools";
 import { processToolCalls } from "./utils";
 
+// Import locally wrapped mixins with relaxed constraints
+import { AsyncUserConfirmationResumer, AuthAgent, OwnedAgent } from "./shared";
+
 const model = openai("gpt-4o-2024-11-20");
 
 const SuperAgent = extend(AIChatAgent<Env>)
-  // Authenticate requests and connections using
-  // JSON Web Token (JWT) Profile for OAuth 2.0 Access Tokens.
   .with(AuthAgent)
-  // Every durable object has an owner set during creation.
-  // Other uses will be rejected.
   .with(OwnedAgent)
-  // Take advantage of Agent scheduling capabilities
-  // to handle async user confirmation polling.
   .with(AsyncUserConfirmationResumer)
-  // Builds the agent with all mixins applied.
   .build();
 
 export class Chat extends SuperAgent {
