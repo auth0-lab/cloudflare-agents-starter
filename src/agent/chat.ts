@@ -8,18 +8,8 @@ import {
   invokeTools,
   withInterruptions,
 } from "@auth0/ai-vercel/interrupts";
-import type {
-  AuthorizationPendingInterrupt,
-  AuthorizationPollingInterrupt,
-} from "@auth0/ai/interrupts";
-import {
-  AuthAgent,
-  OwnedAgent,
-  type Token,
-} from "@auth0/auth0-cloudflare-agents-api";
-import type { Connection } from "agents";
+import { AuthAgent, OwnedAgent } from "@auth0/auth0-cloudflare-agents-api";
 import { AIChatAgent } from "agents/ai-chat-agent";
-import type { Schedule } from "agents/schedule";
 import {
   convertToModelMessages,
   createUIMessageStream,
@@ -29,70 +19,27 @@ import {
   streamText,
   type UIMessage,
 } from "ai";
+import { extend } from "flumix";
 import { executions, tools } from "./tools";
 import { processToolCalls } from "./utils";
 
 const model = openai("gpt-4o-2024-11-20");
 
-// Define mixin method signatures using exported types where available
-// These match the signatures from AuthAgent and OwnedAgent mixins
-// Note: TokenSet is not exported from the package, so we use a local interface
-interface TokenSet {
-  accessToken?: string;
-  idToken?: string;
-  refreshToken?: string;
-  expiresIn?: number;
-  [key: string]: any;
-}
+const SuperAgent = extend(AIChatAgent<Env>)
+  // Authenticate requests and connections using
+  // JSON Web Token (JWT) Profile for OAuth 2.0 Access Tokens.
+  .with(AuthAgent)
+  // Every durable object has an owner set during creation.
+  // Other uses will be rejected.
+  .with(OwnedAgent)
+  // Take advantage of Agent scheduling capabilities
+  // to handle async user confirmation polling.
+  .with(AsyncUserConfirmationResumer)
+  // Builds the agent with all mixins applied.
+  .build();
 
-type MixinMethods = {
-  // From AuthAgent mixin
-  getClaims(): Token | undefined;
-  getCredentials(): TokenSet | undefined;
-  getCredentialsFromConnection(connection: Connection): TokenSet | undefined;
-  requireAuth(opts?: { scopes?: string[] }): Promise<TokenSet>;
-
-  // From OwnedAgent mixin
-  setOwner(owner: string, overwrite?: boolean): Promise<void>;
-  getOwner(): Promise<string | undefined>;
-
-  // From AsyncUserConfirmationResumer mixin
-  scheduleAsyncUserConfirmationCheck(
-    params: {
-      interrupt: AuthorizationPendingInterrupt | AuthorizationPollingInterrupt;
-      context: {
-        threadID: string;
-        toolCallID: string;
-        toolName: string;
-      };
-    },
-    delayInSeconds?: number
-  ): Promise<Schedule>;
-  asyncUserConfirmationCheck(params: {
-    interrupt: AuthorizationPendingInterrupt | AuthorizationPollingInterrupt;
-    context: {
-      threadID: string;
-      toolCallID: string;
-      toolName: string;
-    };
-  }): Promise<void>;
-};
-
-// Apply mixins to a base class that extends AIChatAgent
-// Declare that BaseChat has mixin methods for TypeScript type checking
-class BaseChat extends AIChatAgent<Env> implements MixinMethods {
+export class Chat extends SuperAgent {
   messages: UIMessage[] = [];
-
-  // Declare mixin methods so TypeScript knows they exist at runtime
-  // These will be added by the mixin functions
-  getClaims!: MixinMethods["getClaims"];
-  getCredentials!: MixinMethods["getCredentials"];
-  getCredentialsFromConnection!: MixinMethods["getCredentialsFromConnection"];
-  requireAuth!: MixinMethods["requireAuth"];
-  setOwner!: MixinMethods["setOwner"];
-  getOwner!: MixinMethods["getOwner"];
-  scheduleAsyncUserConfirmationCheck!: MixinMethods["scheduleAsyncUserConfirmationCheck"];
-  asyncUserConfirmationCheck!: MixinMethods["asyncUserConfirmationCheck"];
 
   async onChatMessage() {
     const allTools = {
@@ -176,14 +123,3 @@ The name of the user is ${claims?.name ?? "unknown"}.`,
     return new CloudflareKVStore({ kv: this.env.Session });
   }
 }
-
-// Augment the Chat type to include mixin method
-export type ChatInstance = BaseChat & MixinMethods & AIChatAgent<Env>;
-
-// Apply mixins in the correct order
-const AuthedChat = AuthAgent(BaseChat as any);
-const OwnedAuthedChat = OwnedAgent(AuthedChat);
-export const Chat = AsyncUserConfirmationResumer(OwnedAuthedChat);
-
-// Export the instance type
-export type Chat = ChatInstance;
