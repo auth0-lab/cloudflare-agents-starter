@@ -5,10 +5,10 @@ import {
   type AuthorizationPollingInterrupt,
 } from "@auth0/ai/interrupts";
 import { getCurrentAgent } from "agents";
-import type { ChatInstance } from "./chat";
+import type { Chat } from "./chat";
 
 const getAgent = () => {
-  const { agent } = getCurrentAgent<ChatInstance>();
+  const { agent } = getCurrentAgent<Chat>();
   if (!agent) {
     throw new Error("No agent found");
   }

@@ -3,8 +3,8 @@ import { z } from "zod/v3";
 
 import { getAccessTokenFromTokenVault } from "@auth0/ai-vercel";
 import { TokenVaultError } from "@auth0/ai/interrupts";
-import { withSlack } from "@/agent/auth0-ai";
 import { ErrorCode, WebClient } from "@slack/web-api";
+import { withSlack } from "../auth0-ai";
 
 export const listChannels = withSlack(
   tool({

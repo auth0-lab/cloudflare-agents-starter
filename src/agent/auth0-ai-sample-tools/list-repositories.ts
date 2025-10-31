@@ -1,10 +1,10 @@
 import { tool } from "ai";
 import { z } from "zod/v3";
 
-import { Octokit, RequestError } from "octokit";
 import { getAccessTokenFromTokenVault } from "@auth0/ai-vercel";
 import { TokenVaultError } from "@auth0/ai/interrupts";
-import { withGitHub } from "@/agent/auth0-ai";
+import { Octokit, RequestError } from "octokit";
+import { withGitHub } from "../auth0-ai";
 
 export const listRepositories = withGitHub(
   tool({
