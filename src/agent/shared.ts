@@ -6,7 +6,7 @@ export const APPROVAL = {
 
 /**
  * Local type-safe wrappers for mixins with relaxed constraints
- * 
+ *
  * These re-export the mixin functions from @auth0 packages with relaxed
  * type constraints that don't check for private fields. This allows flumix
  * to properly infer types without requiring manual declarations.
@@ -18,7 +18,7 @@ import {
 } from "@auth0/auth0-cloudflare-agents-api";
 import { AsyncUserConfirmationResumer as OriginalAsyncUserConfirmationResumer } from "@auth0/ai-cloudflare";
 
-// Helper type: Constructor without strict constraints  
+// Helper type: Constructor without strict constraints
 type AnyConstructor = new (...args: any[]) => any;
 
 /**
