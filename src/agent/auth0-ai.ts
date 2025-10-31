@@ -48,7 +48,7 @@ export const withAsyncAuthorization = auth0AI.withAsyncAuthorization({
     console.log(`Thanks for approving the order.`);
   },
   scopes: ["stock:trade"],
-  audience: process.env.AUDIENCE!,
+  audience: process.env.AUTH0_AUDIENCE,
   onAuthorizationInterrupt: async (
     interrupt: AuthorizationPendingInterrupt | AuthorizationPollingInterrupt,
     context

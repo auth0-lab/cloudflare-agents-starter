@@ -17,12 +17,16 @@ app.use(logger());
 
 app.use(
   auth({
-    domain: process.env.AUTH0_DOMAIN!,
-    clientID: process.env.AUTH0_CLIENT_ID!,
-    clientSecret: process.env.AUTH0_CLIENT_SECRET!,
+    domain: process.env.AUTH0_DOMAIN,
+    clientID: process.env.AUTH0_CLIENT_ID,
+    clientSecret: process.env.AUTH0_CLIENT_SECRET,
     baseURL: process.env.BASE_URL || "http://localhost:3000",
+    authorizationParams: {
+      audience: process.env.AUTH0_AUDIENCE,
+      scope: "openid profile email",
+    },
     session: {
-      secret: process.env.AUTH0_SESSION_SECRET!,
+      secret: process.env.AUTH0_SESSION_ENCRYPTION_KEY,
     },
     authRequired: false,
     idpLogout: true,
