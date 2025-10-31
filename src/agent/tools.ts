@@ -10,6 +10,8 @@ import { unstable_scheduleSchema } from "agents/schedule";
 import { format, toZonedTime } from "date-fns-tz";
 import { buyStock } from "./auth0-ai-sample-tools/buy-stock";
 import { checkUsersCalendar } from "./auth0-ai-sample-tools/check-user-calendar";
+import { listChannels } from "@/agent/auth0-ai-sample-tools/list-channels";
+import { listRepositories } from "@/agent/auth0-ai-sample-tools/list-repositories";
 
 /**
  * Weather information tool that requires human confirmation
@@ -128,6 +130,8 @@ export const tools = {
   getScheduledTasks,
   cancelScheduledTask,
   checkUsersCalendar,
+  listChannels,
+  listRepositories,
   buyStock,
 };
 

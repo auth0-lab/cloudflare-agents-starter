@@ -23,13 +23,35 @@ const auth0AI = new Auth0AI({
   },
 });
 
+const getAgent = () => {
+  const { agent } = getCurrentAgent<ChatInstance>();
+  if (!agent) {
+    throw new Error("No agent found");
+  }
+  return agent;
+};
+
+const refreshToken = async () => {
+  const credentials = getAgent().getCredentials();
+  return credentials?.refresh_token;
+};
+
 export const withGoogleCalendar = auth0AI.withTokenVault({
-  refreshToken: async () => {
-    const credentials = getAgent().getCredentials();
-    return credentials?.refresh_token;
-  },
+  refreshToken,
   connection: "google-oauth2",
   scopes: ["https://www.googleapis.com/auth/calendar.freebusy"],
+});
+
+export const withSlack = auth0AI.withTokenVault({
+  refreshToken,
+  connection: "sign-in-with-slack",
+  scopes: ["channels:read", "groups:read"],
+});
+
+export const withGitHub = auth0AI.withTokenVault({
+  refreshToken,
+  connection: "github",
+  scopes: ["repo"],
 });
 
 export const withAsyncAuthorization = auth0AI.withAsyncAuthorization({
