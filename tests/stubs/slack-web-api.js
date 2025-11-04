@@ -16,7 +16,7 @@ export class WebClient {
 
   // Mock conversations API
   conversations = {
-    list: async (options) => {
+    list: async (_options) => {
       return {
         ok: true,
         channels: [

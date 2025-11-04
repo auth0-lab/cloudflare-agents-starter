@@ -19,19 +19,19 @@ export class Bottleneck {
     return Promise.resolve();
   }
 
-  chain(bottleneck) {
+  chain(_bottleneck) {
     return this;
   }
 
-  on(event, handler) {
+  on(_event, _handler) {
     return this;
   }
 
-  once(event, handler) {
+  once(_event, _handler) {
     return this;
   }
 
-  removeAllListeners(event) {
+  removeAllListeners(_event) {
     return this;
   }
 }
@@ -41,11 +41,11 @@ Bottleneck.prototype.Group = class Group {
     this.options = options || {};
   }
 
-  key(str) {
+  key(_str) {
     return new Bottleneck(this.options);
   }
 
-  deleteKey(str) {
+  deleteKey(_str) {
     return Promise.resolve();
   }
 

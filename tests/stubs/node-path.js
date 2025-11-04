@@ -50,7 +50,7 @@ export function resolve(...args) {
   for (let i = args.length - 1; i >= 0; i--) {
     const path = args[i];
     if (path && typeof path === "string") {
-      resolvedPath = path + "/" + resolvedPath;
+      resolvedPath = `${path}/${resolvedPath}`;
       if (path[0] === "/") break;
     }
   }
@@ -72,7 +72,7 @@ export function isAbsolute(path) {
   return path[0] === "/";
 }
 
-export function relative(from, to) {
+export function relative(_from, to) {
   return to;
 }
 
@@ -99,7 +99,7 @@ export function parse(path) {
 }
 
 export function format(pathObject) {
-  return pathObject.dir + "/" + pathObject.base;
+  return `${pathObject.dir}/${pathObject.base}`;
 }
 
 export default {

@@ -19,8 +19,8 @@ import { extend } from "flumix";
 import { executions, tools } from "./tools";
 import { processToolCalls } from "./utils";
 
-// Import locally wrapped mixins with relaxed constraints
-import { AsyncUserConfirmationResumer, AuthAgent, OwnedAgent } from "./shared";
+import { AsyncUserConfirmationResumer } from "@auth0/ai-cloudflare";
+import { AuthAgent, OwnedAgent } from "@auth0/auth0-cloudflare-agents-api";
 
 const model = openai("gpt-4o-2024-11-20");
 
