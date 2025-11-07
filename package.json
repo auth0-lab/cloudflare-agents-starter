@@ -53,7 +53,7 @@
     "@auth0/ai": "*",
     "@auth0/ai-cloudflare": "^2.0.0",
     "@auth0/ai-vercel": "^4.1.0",
-    "@auth0/auth0-cloudflare-agents-api": "priley86/auth0-cloudflare-agents-api#cloudflare-agents-0.2.11",
+    "@auth0/auth0-cloudflare-agents-api": "^2.0.0",
     "@auth0/auth0-hono": "^1.2.5",
     "@phosphor-icons/react": "^2.1.10",
     "@radix-ui/react-avatar": "^1.1.10",
