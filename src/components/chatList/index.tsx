@@ -23,7 +23,7 @@ export default function ChatList() {
   }, []);
 
   if (chats.length === 0) {
-    return <></>;
+    return;
   }
 
   return (

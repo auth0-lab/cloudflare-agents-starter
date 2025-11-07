@@ -1,11 +1,14 @@
 // via https://github.com/vercel/ai/blob/main/examples/next-openai/app/api/use-chat-human-in-the-loop/utils.ts
 
-import { type Message, formatDataStreamPart } from "@ai-sdk/ui-utils";
+import type { ToolExecutionOptions } from "@auth0/ai-vercel";
 import {
-  type DataStreamWriter,
-  type ToolExecutionOptions,
   type ToolSet,
-  convertToCoreMessages,
+  type UIDataTypes,
+  type UIMessage,
+  type UIMessagePart,
+  type UIMessageStreamWriter,
+  type UITools,
+  convertToModelMessages,
 } from "ai";
 import type { z } from "zod";
 import { APPROVAL } from "./shared";
@@ -41,15 +44,17 @@ export async function processToolCalls<
   executions,
 }: {
   tools: Tools; // used for type inference
-  dataStream: DataStreamWriter;
-  messages: Message[];
+  dataStream: UIMessageStreamWriter<UIMessage<unknown, UIDataTypes, UITools>>;
+  messages: UIMessage[];
   executions: {
     [K in keyof Tools & keyof ExecutableTools]?: (
-      args: z.infer<ExecutableTools[K]["parameters"]>,
+      args: z.infer<
+        ExecutableTools[K]["inputSchema"] & z.ZodType<any, any, any>
+      >,
       context: ToolExecutionOptions
     ) => Promise<unknown>;
   };
-}): Promise<Message[]> {
+}): Promise<UIMessage[]> {
   const lastMessage = messages[messages.length - 1];
   const parts = lastMessage.parts;
   if (!parts) return messages;
@@ -57,36 +62,39 @@ export async function processToolCalls<
   const processedParts = await Promise.all(
     parts.map(async (part) => {
       // Only process tool invocations parts
-      if (part.type !== "tool-invocation") return part;
+      if (!part.type.startsWith("tool-")) return part;
 
-      const { toolInvocation } = part;
-      const toolName = toolInvocation.toolName;
+      const toolName = part.type.split("-")[1];
 
-      // Only continue if we have an execute function for the tool (meaning it requires confirmation) and it's in a 'result' state
-      if (!(toolName in executions) || toolInvocation.state !== "result")
+      // Only continue if we have an execute function for the tool (meaning it requires confirmation) and it's in a 'output-available' state
+      if (
+        !(toolName in executions) ||
+        !("state" in part) ||
+        part.state !== "output-available"
+      )
         return part;
 
       let result: unknown;
 
-      if (toolInvocation.result === APPROVAL.YES) {
+      if (part.output === APPROVAL.YES) {
         // Get the tool and check if the tool has an execute function.
         if (
           !isValidToolName(toolName, executions) ||
-          toolInvocation.state !== "result"
+          part.state !== "output-available"
         ) {
           return part;
         }
 
         const toolInstance = executions[toolName];
         if (toolInstance) {
-          result = await toolInstance(toolInvocation.args, {
-            messages: convertToCoreMessages(messages),
-            toolCallId: toolInvocation.toolCallId,
+          result = await toolInstance(part.input, {
+            messages: convertToModelMessages(messages),
+            toolCallId: part.toolCallId,
           });
         } else {
           result = "Error: No execute function found on tool";
         }
-      } else if (toolInvocation.result === APPROVAL.NO) {
+      } else if (part.output === APPROVAL.NO) {
         result = "Error: User denied access to tool execution";
       } else {
         // For any unhandled responses, return the original part.
@@ -94,36 +102,18 @@ export async function processToolCalls<
       }
 
       // Forward updated tool result to the client.
-      dataStream.write(
-        formatDataStreamPart("tool_result", {
-          toolCallId: toolInvocation.toolCallId,
-          result,
-        })
-      );
+      dataStream.write({
+        type: "finish-step",
+      });
 
-      // Return updated toolInvocation with the actual result.
+      // Return updated part with the actual result.
       return {
         ...part,
-        toolInvocation: {
-          ...toolInvocation,
-          result,
-        },
-      };
+        output: result,
+      } as UIMessagePart<UIDataTypes, UITools>;
     })
   );
 
   // Finally return the processed messages
   return [...messages.slice(0, -1), { ...lastMessage, parts: processedParts }];
 }
-
-// export function getToolsRequiringConfirmation<
-//   T extends ToolSet
-//   // E extends {
-//   //   [K in keyof T as T[K] extends { execute: Function } ? never : K]: T[K];
-//   // },
-// >(tools: T): string[] {
-//   return (Object.keys(tools) as (keyof T)[]).filter((key) => {
-//     const maybeTool = tools[key];
-//     return typeof maybeTool.execute !== "function";
-//   }) as string[];
-// }

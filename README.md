@@ -158,7 +158,7 @@ Add new tools in `src/agent/tools.ts` using the tool builder:
 // Example of a tool that requires confirmation
 const searchDatabase = tool({
   description: "Search the database for user records",
-  parameters: z.object({
+  inputSchema: z.object({
     query: z.string(),
     limit: z.number().optional(),
   }),
@@ -168,7 +168,7 @@ const searchDatabase = tool({
 // Example of an auto-executing tool
 const getCurrentTime = tool({
   description: "Get current server time",
-  parameters: z.object({}),
+  inputSchema: z.object({}),
   execute: async () => new Date().toISOString(),
 });
 ```

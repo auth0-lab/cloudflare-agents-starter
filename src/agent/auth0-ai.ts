@@ -23,16 +23,30 @@ const auth0AI = new Auth0AI({
   },
 });
 
-export const withGoogleCalendar = auth0AI.withTokenForConnection({
-  refreshToken: async () => {
-    const credentials = getAgent().getCredentials();
-    return credentials?.refresh_token;
-  },
+const refreshToken = async () => {
+  const credentials = getAgent().getCredentials();
+  return credentials?.refresh_token;
+};
+
+export const withGoogleCalendar = auth0AI.withTokenVault({
+  refreshToken,
   connection: "google-oauth2",
   scopes: ["https://www.googleapis.com/auth/calendar.freebusy"],
 });
 
-export const withAsyncUserConfirmation = auth0AI.withAsyncUserConfirmation({
+export const withSlack = auth0AI.withTokenVault({
+  refreshToken,
+  connection: "sign-in-with-slack",
+  scopes: ["channels:read", "groups:read"],
+});
+
+export const withGitHub = auth0AI.withTokenVault({
+  refreshToken,
+  connection: "github",
+  scopes: ["repo"],
+});
+
+export const withAsyncAuthorization = auth0AI.withAsyncAuthorization({
   userID: async () => {
     const owner = await getAgent().getOwner();
     if (!owner) {
@@ -40,14 +54,23 @@ export const withAsyncUserConfirmation = auth0AI.withAsyncUserConfirmation({
     }
     return owner;
   },
-  // onAuthorizationRequest: "block",
-  scopes: ["stock:buy"],
-  audience: "https://api.mystocks.example",
+  onAuthorizationRequest: async (creds) => {
+    console.log(
+      `An authorization request was sent to your mobile device or your email.`
+    );
+    await creds;
+    console.log(`Thanks for approving the order.`);
+  },
+  scopes: ["stock:trade"],
+  audience: process.env.AUTH0_AUDIENCE,
   onAuthorizationInterrupt: async (
     interrupt: AuthorizationPendingInterrupt | AuthorizationPollingInterrupt,
     context
   ) => {
-    await getAgent().scheduleAsyncUserConfirmationCheck({ interrupt, context });
+    await getAgent().scheduleAsyncUserConfirmationCheck({
+      interrupt,
+      context,
+    });
   },
   onUnauthorized: async (e: Error) => {
     if (e instanceof AccessDeniedInterrupt) {
