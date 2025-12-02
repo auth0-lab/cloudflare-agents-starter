@@ -10,8 +10,6 @@ declare namespace Cloudflare {
 		ChatList: KVNamespace;
 		Session: KVNamespace;
 		OPENAI_API_KEY: string;
-		SESSION_STORE: string;
-		SESSION_STORE_NAMESPACE: string;
 		AUTH0_DOMAIN: string;
 		AUTH0_CLIENT_ID: string;
 		AUTH0_CLIENT_SECRET: string;
@@ -27,7 +25,7 @@ type StringifyValues<EnvType extends Record<string, unknown>> = {
 	[Binding in keyof EnvType]: EnvType[Binding] extends string ? EnvType[Binding] : string;
 };
 declare namespace NodeJS {
-	interface ProcessEnv extends StringifyValues<Pick<Cloudflare.Env, "OPENAI_API_KEY" | "SESSION_STORE" | "SESSION_STORE_NAMESPACE" | "AUTH0_DOMAIN" | "AUTH0_CLIENT_ID" | "AUTH0_CLIENT_SECRET" | "AUTH0_SESSION_ENCRYPTION_KEY" | "AUTH0_AUDIENCE" | "BASE_URL">> {}
+	interface ProcessEnv extends StringifyValues<Pick<Cloudflare.Env, "OPENAI_API_KEY" | "AUTH0_DOMAIN" | "AUTH0_CLIENT_ID" | "AUTH0_CLIENT_SECRET" | "AUTH0_SESSION_ENCRYPTION_KEY" | "AUTH0_AUDIENCE" | "BASE_URL">> {}
 }
 
 // Begin runtime types
