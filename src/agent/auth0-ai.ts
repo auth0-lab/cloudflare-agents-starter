@@ -28,23 +28,29 @@ const refreshToken = async () => {
   return credentials?.refresh_token;
 };
 
-export const withGoogleCalendar = auth0AI.withTokenVault({
-  refreshToken,
-  connection: "google-oauth2",
-  scopes: ["https://www.googleapis.com/auth/calendar.freebusy"],
-});
+// Generic connection helper for Token Vault services
+const withConnection = (connection: string, scopes: string[]) =>
+  auth0AI.withTokenVault({
+    refreshToken,
+    connection,
+    scopes,
+  });
 
-export const withSlack = auth0AI.withTokenVault({
-  refreshToken,
-  connection: "sign-in-with-slack",
-  scopes: ["channels:read", "groups:read"],
-});
+export const withGoogleCalendar = withConnection("google-oauth2", [
+  "openid",
+  "https://www.googleapis.com/auth/calendar.freebusy",
+]);
 
-export const withGitHub = auth0AI.withTokenVault({
-  refreshToken,
-  connection: "github",
-  scopes: ["repo"],
-});
+export const withSlack = withConnection("sign-in-with-slack", [
+  "channels:read",
+  "groups:read",
+]);
+
+export const withGitHub = withConnection(
+  "github",
+  // Scopes are not supported for GitHub yet. Set required scopes when creating the accompanying GitHub app
+  []
+);
 
 export const withAsyncAuthorization = auth0AI.withAsyncAuthorization({
   userID: async () => {

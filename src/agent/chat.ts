@@ -5,7 +5,7 @@ import {
   invokeTools,
   withInterruptions,
 } from "@auth0/ai-vercel/interrupts";
-import { AIChatAgent } from "agents/ai-chat-agent";
+import { AIChatAgent } from "@cloudflare/ai-chat";
 import {
   convertToModelMessages,
   createUIMessageStream,
@@ -22,7 +22,7 @@ import { processToolCalls } from "./utils";
 import { AsyncUserConfirmationResumer } from "@auth0/ai-cloudflare";
 import { AuthAgent, OwnedAgent } from "@auth0/auth0-cloudflare-agents-api";
 
-const model = openai("gpt-4o-2024-11-20");
+const model = openai.chat("gpt-4o-2024-11-20");
 
 const SuperAgent = extend(AIChatAgent<Env>)
   .with(AuthAgent)
@@ -46,36 +46,71 @@ export class Chat extends SuperAgent {
       execute: withInterruptions(
         async ({ writer }) => {
           await invokeTools({
-            messages: convertToModelMessages(this.messages),
+            messages: await convertToModelMessages(this.messages),
             tools: allTools,
           });
 
-          const processed = await processToolCalls({
+          let processed = await processToolCalls({
             messages: this.messages,
             dataStream: writer,
             tools: allTools,
             executions,
           });
 
+          // Check if there are any tool-error parts in processed messages
+          for (let msgIdx = 0; msgIdx < processed.length; msgIdx++) {
+            const msg = processed[msgIdx];
+            if (msg.parts) {
+              for (let partIdx = 0; partIdx < msg.parts.length; partIdx++) {
+                const part = msg.parts[partIdx];
+                if (part.type === "tool-error") {
+                  const error = {
+                    cause: (part as any).error,
+                    toolCallId: (part as any).toolCallId,
+                    toolName: (part as any).toolName,
+                    toolArgs: (part as any).input,
+                  };
+                  throw error;
+                }
+              }
+            }
+          }
+
           const result = streamText({
             model,
             stopWhen: stepCountIs(10),
-            messages: convertToModelMessages(processed),
             system: `You are a helpful assistant that can do various tasks...
 
 If the user asks to schedule a task, use the schedule tool to schedule the task.
 
 The name of the user is ${claims?.name ?? "unknown"}.`,
+            messages: await convertToModelMessages(processed),
             tools: allTools,
-            onStepFinish: (output) => {
+            onStepFinish: (step) => {
+              if (step.finishReason === "tool-calls") {
+                for (let i = 0; i < step.content.length; i++) {
+                  const item = step.content[i];
+                  if (item.type === "tool-error") {
+                    const serializableError = {
+                      cause: item.error,
+                      toolCallId: item.toolCallId,
+                      toolName: item.toolName,
+                      toolArgs: item.input,
+                    };
+                    throw serializableError;
+                  }
+                }
+              }
+            },
+            onFinish: (output) => {
               if (output.finishReason === "tool-calls") {
-                const last = output.content[output.content.length - 1];
-                if (last?.type === "tool-error") {
-                  const { toolName, toolCallId, error, input } = last;
+                const lastMessage = output.content[output.content.length - 1];
+                if (lastMessage?.type === "tool-error") {
+                  const { toolName, toolCallId, error, input } = lastMessage;
                   const serializableError = {
                     cause: error,
-                    toolCallId,
-                    toolName,
+                    toolCallId: toolCallId,
+                    toolName: toolName,
                     toolArgs: input,
                   };
                   throw serializableError;
@@ -92,7 +127,9 @@ The name of the user is ${claims?.name ?? "unknown"}.`,
         },
         { messages: this.messages, tools: allTools }
       ),
-      onError: errorSerializer(),
+      onError: errorSerializer((err) => {
+        return "An error occurred.";
+      }),
     });
 
     return createUIMessageStreamResponse({ stream });

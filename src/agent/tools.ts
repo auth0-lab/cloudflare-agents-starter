@@ -6,12 +6,26 @@ import { tool } from "ai";
 import { z } from "zod";
 
 import { getCurrentAgent } from "agents";
-import { unstable_scheduleSchema } from "agents/schedule";
+import { scheduleSchema } from "agents/schedule";
 import { format, toZonedTime } from "date-fns-tz";
 import { buyStock } from "./auth0-ai-sample-tools/buy-stock";
 import { checkUsersCalendar } from "./auth0-ai-sample-tools/check-user-calendar";
 import { listChannels } from "./auth0-ai-sample-tools/list-channels";
+import { listGitHubEvents } from "./auth0-ai-sample-tools/list-gh-events";
 import { listRepositories } from "./auth0-ai-sample-tools/list-repositories";
+import type { Chat } from "./chat";
+
+// Type for the schedule schema input - matches the agents/schedule schema
+type ScheduleWhen =
+  | { type: "scheduled"; date: string }
+  | { type: "delayed"; delayInSeconds: number }
+  | { type: "cron"; cron: string }
+  | { type: "no-schedule" };
+
+interface ScheduleInput {
+  description: string;
+  when: ScheduleWhen;
+}
 
 /**
  * Weather information tool that requires human confirmation
@@ -45,33 +59,33 @@ const getLocalTime = tool({
 });
 
 const scheduleTask = tool({
-  description: "A tool to schedule a task to be executed at a later time",
-  inputSchema: unstable_scheduleSchema,
-  execute: async ({ when, description }) => {
+  description:
+    "Schedule a task to be executed at a later time. Use this when the user asks to be reminded or wants something done later.",
+  inputSchema: scheduleSchema,
+  execute: async (input) => {
     // we can now read the agent context from the ALS store
-    const { agent } = getCurrentAgent();
+    const { agent } = getCurrentAgent<Chat>();
+    const { when, description } = input as ScheduleInput;
 
-    function throwError(msg: string): string {
-      throw new Error(msg);
-    }
     if (when.type === "no-schedule") {
       return "Not a valid schedule input";
     }
-    const input =
+    const scheduleInput =
       when.type === "scheduled"
-        ? when.date // scheduled
+        ? when.date
         : when.type === "delayed"
-          ? when.delayInSeconds // delayed
+          ? when.delayInSeconds
           : when.type === "cron"
-            ? when.cron // cron
-            : throwError("not a valid schedule input");
+            ? when.cron
+            : null;
+    if (!scheduleInput) return "Invalid schedule type";
     try {
-      agent!.schedule(input!, "executeTask" as keyof typeof agent, description);
+      await agent!.schedule(scheduleInput, "executeTask", description);
+      return `Task scheduled: "${description}" (${when.type}: ${scheduleInput})`;
     } catch (error) {
       console.error("error scheduling task", error);
       return `Error scheduling task: ${error}`;
     }
-    return `Task scheduled for type "${when.type}" : ${input}`;
   },
 });
 
@@ -83,7 +97,7 @@ const getScheduledTasks = tool({
   description: "List all tasks that have been scheduled",
   inputSchema: z.object({}),
   execute: async () => {
-    const { agent } = getCurrentAgent();
+    const { agent } = getCurrentAgent<Chat>();
 
     try {
       const tasks = agent!.getSchedules();
@@ -108,7 +122,7 @@ const cancelScheduledTask = tool({
     taskId: z.string().describe("The ID of the task to cancel"),
   }),
   execute: async ({ taskId }) => {
-    const { agent } = getCurrentAgent();
+    const { agent } = getCurrentAgent<Chat>();
     try {
       await agent!.cancelSchedule(taskId);
       return `Task ${taskId} has been successfully canceled.`;
@@ -132,6 +146,7 @@ export const tools = {
   checkUsersCalendar,
   listChannels,
   listRepositories,
+  listGitHubEvents,
   buyStock,
 };
 

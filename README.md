@@ -39,12 +39,43 @@ A starter template for building AI-powered chat agents using Cloudflare's Agent 
 
 Note: you can also use the default app.
 
-1. In your Auth0 dashboard, go to "Applications" and click "Create Application"
-2. Select "Web Application" as the application type
+1. In your Auth0 dashboard, go to "Applications -> Applications" and click "Create Application"
+2. Select **Regular Web Applications** as the application type and click **Create**
 3. Configure the following settings:
    - Allowed Callback URLs: `http://localhost:3000/auth/callback` (development) and your production URL
    - Allowed Logout URLs: `http://localhost:3000` (development) and your production URL
 4. Note your Domain, Client ID, and Client Secret for later use
+5. Scroll down to the **Refresh Token Rotation** section and disable the Allow Refresh Token Rotation option.
+6. Scroll down and expand the **Advanced** section. Switch to the **Grant Types** tab and enable the **Token Vault** grant type.
+7. Click **Save** in the bottom right to save your changes.
+
+### Step 3: Configure My Account API
+
+The Connected Accounts flow uses the [My Account API](https://auth0.com/docs/manage-users/my-account-api) to create and manage connected accounts for a user across supported external providers.
+
+In the Auth0 Dashboard, configure the My Account API:
+
+- Navigate to **Applications > APIs**, locate the My Account API banner, and select Activate to activate the Auth0 My Account API.
+- Once activated, select **Auth0 My Account API** and then select the **Application Access** tab.
+  - Find your client application and select **Edit** to configure its **application access policies**.
+  - Select **User Access** and under **Authorization**, select **Authorized**.
+  - For the permissions, select **All** the **Connected Accounts scopes** for the application.
+  - Select **Save**. This creates a client grant that allows your client application to access the My Account API with the Connected Accounts scopes on the user’s behalf.
+- Next, navigate to the **Settings** tab. Under **Access Settings**, select **Allow Skipping User Consent**.
+
+### Step 4: Define a Multi-Resource Refresh Token policy for your Application
+
+After your web application has been granted access to the My Account API, you will also need to leverage the [Multi-Resource Refresh Token](https://auth0.com/docs/secure/tokens/refresh-tokens/multi-resource-refresh-token) feature, which enables the refresh token delivered to your application to also obtain an access token to call the My Account API.
+
+You can quickly define a **refresh token policy** for your application to use when requesting access tokens for the My Account API by doing the following:
+
+- Navigate to **Applications > Applications** and select your client application.
+- On the **Settings** tab, scroll down to the **Multi-Resource Refresh Token** section.
+- Select **Edit Configuration** and then enable the MRRT toggle for the **Auth0 My Account API**.
+
+### Step 5: Configure Social Integrations
+
+Configure a social connection for use with the application. Reference the setup guides for configuring [Google](https://auth0.com/ai/docs/integrations/google), [Github](https://auth0.com/ai/docs/integrations/github), and [Slack](https://auth0.com/ai/docs/integrations/slack) social integrations.
 
 ## Quick Start
 
@@ -120,7 +151,7 @@ This starter kit uses Auth0 for authentication and authorization:
 
 1. Users log in using Auth0 credentials
 2. Auth0 provides JWT tokens for API authentication
-3. The Agent use the `WithAuth` mixin from the `agents-oauth2-jwt-bearer` package to validate the JWT token
+3. The Agent uses the `AuthAgent` mixin from the `@auth0/auth0-cloudflare-agents-api` package to validate the JWT token
 4. API requests and WebSocket connections are secured with the JWT token
 5. Each chat is associated with its owner (user ID) to ensure data isolation
 
@@ -196,7 +227,7 @@ export const executions = {
 
 The integration uses Hono's OpenID Connect middleware for authentication and session management. You can customize the authentication behavior in `src/server.ts`.
 
-The agent uses the `WithAuth` mixin from `agents-oauth2-jwt-bearer` package to secure API endpoints and WebSocket connections. Each chat is associated with its owner through the `setOwner` method to ensure users can only access their own chats.
+The agent uses the `AuthAgent` mixin from `@auth0/auth0-cloudflare-agents-api` package to secure API endpoints and WebSocket connections. Each chat is associated with its owner through the `setOwner` method to ensure users can only access their own chats.
 
 ## Learn More
 

@@ -104,9 +104,13 @@ app.get("/api/chats/:chatID", requiresAuth(), async (c) => {
   if (!session?.user) {
     return c.json({ error: "User not authenticated" }, 401);
   }
+  const chatID = c.req.param("chatID");
+  if (!chatID) {
+    return c.json({ error: "Chat ID is required" }, 400);
+  }
   const chat = await getChat({
     userID: session.user.sub,
-    chatID: c.req.param("chatID"),
+    chatID,
     env: c.env,
   });
   return c.json(chat);

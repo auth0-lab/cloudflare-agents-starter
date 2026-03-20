@@ -82,19 +82,34 @@ export default function Chat() {
     agentMessages.length > 0 && scrollToBottom();
   }, [agentMessages, scrollToBottom]);
 
-  const pendingToolCallConfirmation = agentMessages.some(
-    (m: UIMessage) =>
-      m.parts?.some(
-        (part) =>
-          (part?.type?.startsWith("tool-") &&
-            toolsRequiringConfirmation.includes(
-              part.type?.split("-")[1] as keyof typeof tools
-            ) &&
-            "state" in part &&
-            part?.state === "input-available") ||
-          TokenVaultInterrupt.isInterrupt(toolInterrupt)
-      ) || TokenVaultInterrupt.isInterrupt(toolInterrupt)
-  );
+  // Check if there are any pending tool confirmations that need user action
+  const pendingToolCallConfirmation = agentMessages.some((m: UIMessage) => {
+    return m.parts?.some((part: any) => {
+      // Check for tools requiring confirmation
+      if (
+        part?.type?.startsWith("tool-") &&
+        toolsRequiringConfirmation.includes(
+          part.type?.split("-")[1] as keyof typeof tools
+        ) &&
+        "state" in part &&
+        part?.state === "input-available"
+      ) {
+        return true;
+      }
+
+      // Check for TokenVault interrupts that match this tool call
+      if (
+        part?.type?.startsWith("tool-") &&
+        toolInterrupt &&
+        TokenVaultInterrupt.isInterrupt(toolInterrupt)
+      ) {
+        const interrupt = toolInterrupt as any;
+        return interrupt?.toolCallId === part?.toolCallId;
+      }
+
+      return false;
+    });
+  });
 
   return (
     <Layout>
@@ -149,7 +164,7 @@ export default function Chat() {
             </div>
           )}
 
-          {agentMessages.map((m: UIMessage, index) => {
+          {agentMessages.map((m: UIMessage, index: number) => {
             const isUser = m.role === "user";
             const showAvatar =
               index === 0 || agentMessages[index - 1]?.role !== m.role;
@@ -238,24 +253,27 @@ export default function Chat() {
                             toolInterrupt &&
                             TokenVaultInterrupt.isInterrupt(toolInterrupt)
                           ) {
-                            return (
-                              <TokenVaultConsentPopup
-                                key={toolInterrupt?.toolCall?.id}
-                                interrupt={toolInterrupt}
-                                auth={{ authorizePath: "/auth/login" }}
-                                connectWidget={{
-                                  icon: (
-                                    <div className="bg-gray-200 p-3 rounded-lg flex-wrap">
-                                      <GoogleCalendarIcon />
-                                    </div>
-                                  ),
-                                  title: "Google Calendar Access",
-                                  description:
-                                    "We need access to your google Calendar in order to call this tool...",
-                                  action: { label: "Grant" },
-                                }}
-                              />
-                            );
+                            // Only show popup if the interrupt matches this tool call
+                            const interrupt = toolInterrupt as any;
+                            if (interrupt?.toolCallId === part.toolCallId) {
+                              return (
+                                <TokenVaultConsentPopup
+                                  key={part.toolCallId}
+                                  interrupt={toolInterrupt}
+                                  connectWidget={{
+                                    icon: (
+                                      <div className="bg-gray-200 p-3 rounded-lg flex-wrap">
+                                        <GoogleCalendarIcon />
+                                      </div>
+                                    ),
+                                    title: "Google Calendar Access",
+                                    description:
+                                      "We need access to your google Calendar in order to call this tool...",
+                                    action: { label: "Grant" },
+                                  }}
+                                />
+                              );
+                            }
                           }
                           if (part?.type?.startsWith("tool-")) {
                             const toolCallId = part.toolCallId;
@@ -280,6 +298,30 @@ export default function Chat() {
                           }
                           return null;
                         })}
+                        {/* Show popup if there's an interrupt for this message and no matching tool-call part was found */}
+                        {!isUser &&
+                          toolInterrupt &&
+                          TokenVaultInterrupt.isInterrupt(toolInterrupt) &&
+                          !m.parts?.some(
+                            (p: any) =>
+                              p?.toolCallId ===
+                              (toolInterrupt as any)?.toolCallId
+                          ) && (
+                            <TokenVaultConsentPopup
+                              interrupt={toolInterrupt}
+                              connectWidget={{
+                                icon: (
+                                  <div className="bg-gray-200 p-3 rounded-lg flex-wrap">
+                                    <GoogleCalendarIcon />
+                                  </div>
+                                ),
+                                title: "Google Calendar Access",
+                                description:
+                                  "We need access to your google Calendar in order to call this tool...",
+                                action: { label: "Grant" },
+                              }}
+                            />
+                          )}
                       </div>
                     </div>
                   </div>
