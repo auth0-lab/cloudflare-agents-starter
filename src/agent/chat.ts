@@ -50,7 +50,7 @@ export class Chat extends SuperAgent {
             tools: allTools,
           });
 
-          let processed = await processToolCalls({
+          const processed = await processToolCalls({
             messages: this.messages,
             dataStream: writer,
             tools: allTools,
@@ -127,7 +127,7 @@ The name of the user is ${claims?.name ?? "unknown"}.`,
         },
         { messages: this.messages, tools: allTools }
       ),
-      onError: errorSerializer((err) => {
+      onError: errorSerializer((_err) => {
         return "An error occurred.";
       }),
     });

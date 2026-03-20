@@ -170,7 +170,7 @@ export default function Chat() {
               index === 0 || agentMessages[index - 1]?.role !== m.role;
 
             return (
-              <div key={`${m.id}-${index}`}>
+              <div key={m.id}>
                 {showDebug && (
                   <pre className="text-xs text-muted-foreground overflow-scroll">
                     {JSON.stringify(m, null, 2)}
@@ -192,10 +192,12 @@ export default function Chat() {
 
                     <div>
                       <div>
-                        {m.parts?.map((part: any, i) => {
+                        {m.parts?.map((part: any) => {
                           if (part.type === "text") {
                             return (
-                              <div key={`${part.text}-${i}`}>
+                              <div
+                                key={`${m.id}-text-${part.text?.slice(0, 20)?.replace(/\\W/g, "")}`}
+                              >
                                 <Card
                                   className={`p-3 rounded-md bg-neutral-100 dark:bg-neutral-900 ${
                                     isUser
@@ -215,7 +217,7 @@ export default function Chat() {
                                     </span>
                                   )}
                                   <MemoizedMarkdown
-                                    id={`${m.id}-${i}`}
+                                    id={`${m.id}-text`}
                                     content={part.text.replace(
                                       /^scheduled message: /,
                                       ""
@@ -241,7 +243,7 @@ export default function Chat() {
                                   } relative`}
                                 >
                                   <MemoizedMarkdown
-                                    id={`${m.id}-${i}`}
+                                    id={`${m.id}-${part.toolCallId}`}
                                     content={part.output || ""}
                                   />
                                 </Card>
@@ -287,8 +289,7 @@ export default function Chat() {
 
                             return (
                               <ToolInvocationCard
-                                // biome-ignore lint/suspicious/noArrayIndexKey: using index is safe here as the array is static
-                                key={`${toolCallId}-${i}`}
+                                key={toolCallId}
                                 part={part}
                                 toolCallId={toolCallId}
                                 needsConfirmation={needsConfirmation}
