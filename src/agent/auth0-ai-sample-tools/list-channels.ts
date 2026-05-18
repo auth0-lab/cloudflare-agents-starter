@@ -24,12 +24,18 @@ export const listChannels = withSlack(
           limit: 10,
         });
 
-        return result.channels?.map((channel) => channel.name);
+        const channelNames =
+          result.channels?.map((channel) => channel.name) || [];
+
+        return {
+          total_channels: channelNames.length,
+          channels: channelNames,
+        };
       } catch (error) {
         if (error && typeof error === "object" && "code" in error) {
           if (error.code === ErrorCode.HTTPError) {
             throw new TokenVaultError(
-              `Authorization required to access the Token Vault`
+              `Authorization required to access the Token Vault connection`
             );
           }
         }
