@@ -23,6 +23,7 @@
   },
   "license": "Apache-2.0",
   "overrides": {
+    "@cloudflare/workers-types": "^4.20260702.1",
     "@auth0/ai-cloudflare": {
       "agents": "^0.2.11"
     },
@@ -31,20 +32,20 @@
     }
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.2.6",
-    "@cloudflare/vite-plugin": "1.13.13",
-    "@cloudflare/vitest-pool-workers": "^0.9.13",
+    "@biomejs/biome": "2.3.2",
+    "@cloudflare/vite-plugin": "1.49.0",
+    "@cloudflare/vitest-pool-workers": "^0.19.1",
     "@tailwindcss/vite": "^4.1.5",
     "@types/node": "^24.8.1",
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.2",
     "@vitejs/plugin-react": "^5.0.4",
-    "prettier": "^3.6.2",
+    "prettier": "3.6.2",
     "tailwindcss": "^4.1.5",
     "typescript": "^5.9.3",
     "vite": "^7.1.11",
-    "vitest": "3.2.4",
-    "wrangler": "^4.43.0"
+    "vitest": "^4.1.0",
+    "wrangler": "4.116.0"
   },
   "dependencies": {
     "@ai-sdk/openai": "2.0.24",
@@ -69,7 +70,7 @@
     "date-fns": "^4.1.0",
     "date-fns-tz": "^3.2.0",
     "flumix": "^1.0.0",
-    "hono": "^4.7.8",
+    "hono": "4.10.4",
     "hono-agents": "^2.0.4",
     "lucide-react": "^0.508.0",
     "marked": "^15.0.11",
