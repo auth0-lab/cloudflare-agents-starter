@@ -1,7 +1,9 @@
-import { defineWorkersConfig } from "@cloudflare/vitest-pool-workers/config";
+import { cloudflareTest } from "@cloudflare/vitest-pool-workers";
 import path from "node:path";
+import { defineConfig } from "vitest/config";
 
-export default defineWorkersConfig({
+export default defineConfig({
+  plugins: [cloudflareTest({ wrangler: { configPath: "./wrangler.jsonc" } })],
   resolve: {
     alias: {
       // Stub Node.js built-ins that are used by @openfga/sdk and @slack/web-api but not needed in tests
@@ -25,6 +27,13 @@ export default defineWorkersConfig({
       "bottleneck/light.js": path.resolve(
         __dirname,
         "./tests/stubs/bottleneck-light.js"
+      ),
+      // Force @opentelemetry/api (used transitively by @openfga/sdk) to its CJS
+      // build. Its ESM build (the "module" condition) uses extensionless
+      // relative imports that the Workers pool cannot resolve as native ESM.
+      "@opentelemetry/api": path.resolve(
+        __dirname,
+        "./node_modules/@opentelemetry/api/build/src/index.js"
       ),
     },
   },
@@ -53,11 +62,6 @@ export default defineWorkersConfig({
           include: ["ajv", "uuid", "tiny-async-pool"],
           exclude: ["@slack/web-api"],
         },
-      },
-    },
-    poolOptions: {
-      workers: {
-        wrangler: { configPath: "./wrangler.jsonc" },
       },
     },
   },
